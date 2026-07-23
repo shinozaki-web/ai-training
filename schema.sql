@@ -74,10 +74,10 @@ CREATE POLICY "own profile update" ON profiles FOR UPDATE
     AND is_admin = (SELECT is_admin FROM profiles WHERE id = auth.uid())
   );
 
-CREATE POLICY "own survey"    ON survey_responses FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "own progress"  ON section_progress FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "own quiz"      ON quiz_results     FOR ALL USING (auth.uid() = user_id);
-CREATE POLICY "own badges"    ON user_badges      FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own survey"    ON survey_responses FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "own progress"  ON section_progress FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "own quiz"      ON quiz_results     FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "own badges"    ON user_badges      FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 
 -- 管理者は同じ会社の全データを読める
 CREATE POLICY "admin read company profiles"
