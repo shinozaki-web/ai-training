@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ホーム — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .welcome-card {
+    background: linear-gradient(135deg, var(--primary) 0%, #1d4ed8 100%);
+    border-radius: 20px;
+    padding: 24px;
+    color: white;
+    margin-bottom: 20px;
+  }
+  .welcome-card .greeting { font-size: 13px; opacity: 0.85; margin-bottom: 4px; }
+  .welcome-card .name { font-size: 22px; font-weight: 800; margin-bottom: 16px; }
+  .progress-label { font-size: 12px; opacity: 0.85; margin-bottom: 6px; display: flex; justify-content: space-between; }
+  .progress-bar-white { background: rgba(255,255,255,0.25); border-radius: 999px; height: 8px; }
+  .progress-bar-white .fill { height: 100%; background: white; border-radius: 999px; transition: width 0.4s ease; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 20px 0 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .badge-mini-grid { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; }
+  .badge-mini { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+  .badge-mini .icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; background: var(--bg); border: 2px solid var(--border); }
+  .badge-mini .icon.earned { background: #eff6ff; border-color: var(--primary); }
+  .badge-mini .icon.locked { filter: grayscale(1); opacity: 0.35; }
+  .badge-mini .lbl { font-size: 10px; color: var(--text-muted); font-weight: 600; }
+  .next-card { background: var(--card); border: 2px solid var(--primary); border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 14px; cursor: pointer; text-decoration: none; color: var(--text); margin-bottom: 8px; }
+  .next-card .num { width: 40px; height: 40px; background: var(--primary); color: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+  .next-card .info h3 { font-size: 14px; font-weight: 700; }
+  .next-card .info p { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .cert-card { background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 16px; padding: 20px; color: white; text-align: center; }
+  .cert-card .icon { font-size: 40px; margin-bottom: 8px; }
+  .cert-card h3 { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .cert-card p { font-size: 12px; opacity: 0.9; }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>🤖 AI業務改善研修</h1>
+  <div class="subtitle" id="company-name">読み込み中...</div>
+</div>
+
+<div class="main">
+  <div class="welcome-card">
+    <div class="greeting">おつかれさまです</div>
+    <div class="name" id="user-name">...</div>
+    <div class="progress-label">
+      <span>全体の進捗</span>
+      <span id="progress-text">0 / 6 モジュール</span>
+    </div>
+    <div class="progress-bar-white">
+      <div class="fill" id="progress-fill" style="width:0%"></div>
+    </div>
+  </div>
+
+  <div class="section-title">次に進むレッスン</div>
+  <div id="next-lesson-area">
+    <div class="card" style="text-align:center; color:var(--text-muted); font-size:14px; padding:24px;">
+      読み込み中...
+    </div>
+  </div>
+
+  <div class="section-title">バッジコレクション</div>
+  <div class="card" style="padding:16px;">
+    <div class="badge-mini-grid" id="badge-grid">
+    </div>
+  </div>
+
+  <div id="cert-area" style="display:none; margin-top:20px;">
+    <div class="cert-card">
+      <div class="icon">🏆</div>
+      <h3>修了証を確認する</h3>
+      <p>すべてのバッジを獲得しました！</p>
+      <a href="badges.html" style="display:block; margin-top:12px; background:white; color:#d97706; border-radius:10px; padding:10px; font-weight:800; font-size:14px; text-decoration:none;">修了証を見る</a>
+    </div>
+  </div>
+
+  <div style="margin-top:24px;">
+    <button class="btn btn-outline" id="logout-btn">ログアウト</button>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="home.html" class="active"><span class="icon">🏠</span>ホーム</a>
+  <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
+  <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script src="data/lessons.js"></script>
+<script>
+const BADGE_DEFS = MODULES.map(m => m.badge);
+// 修了証バッジ
+BADGE_DEFS.push({ id: 'complete', icon: '🏆', label: '修了証' });
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+
+  const uid = session.user.id;
+
+  // プロフィール取得
+  const { data: profile } = await sb.from('profiles').select('name, company_id, companies(name)').eq('id', uid).maybeSingle();
+  if (profile) {
+    const nameEl = document.getElementById('user-name');
+    nameEl.textContent = profile.name + ' さん';
+    const compEl = document.getElementById('company-name');
+    compEl.textContent = profile.companies?.name ?? '';
+  }
+
+  // アンケート確認
+  const { data: survey } = await sb.from('survey_responses').select('id').eq('user_id', uid).maybeSingle();
+  if (!survey) { location.href = 'survey.html'; return; }
+
+  // 進捗取得
+  const { data: progress } = await sb.from('section_progress').select('module_id, section_id').eq('user_id', uid);
+  const progressMap = {};
+  (progress || []).forEach(p => {
+    if (!progressMap[p.module_id]) progressMap[p.module_id] = new Set();
+    progressMap[p.module_id].add(p.section_id);
+  });
+
+  // バッジ取得
+  const { data: badges } = await sb.from('user_badges').select('badge_id').eq('user_id', uid);
+  const earnedBadges = new Set((badges || []).map(b => b.badge_id));
+
+  // 完了モジュール数
+  let completedCount = 0;
+  MODULES.forEach(m => {
+    const done = progressMap[m.id];
+    if (done && done.size >= m.sections.length) completedCount++;
+  });
+
+  // 進捗表示
+  const pct = Math.round((completedCount / MODULES.length) * 100);
+  document.getElementById('progress-text').textContent = completedCount + ' / ' + MODULES.length + ' モジュール';
+  document.getElementById('progress-fill').style.width = pct + '%';
+
+  // 次のレッスン
+  const nextArea = document.getElementById('next-lesson-area');
+  let nextModule = null;
+  for (const m of MODULES) {
+    const done = progressMap[m.id];
+    if (!done || done.size < m.sections.length) { nextModule = m; break; }
+  }
+  nextArea.innerHTML = '';
+  if (nextModule) {
+    const a = document.createElement('a');
+    a.href = 'curriculum.html';
+    a.className = 'next-card';
+    const numDiv = document.createElement('div');
+    numDiv.className = 'num';
+    numDiv.textContent = nextModule.id;
+    const infoDiv = document.createElement('div');
+    infoDiv.className = 'info';
+    const h3 = document.createElement('h3');
+    h3.textContent = nextModule.title;
+    const p = document.createElement('p');
+    const done = progressMap[nextModule.id];
+    const doneCount = done ? done.size : 0;
+    p.textContent = doneCount + ' / ' + nextModule.sections.length + ' セクション完了';
+    infoDiv.append(h3, p);
+    a.append(numDiv, infoDiv);
+    nextArea.appendChild(a);
+  } else {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.style.cssText = 'text-align:center; color:var(--success); font-size:15px; font-weight:700; padding:20px;';
+    div.textContent = '🎉 全モジュール完了！';
+    nextArea.appendChild(div);
+    document.getElementById('cert-area').style.display = 'block';
+  }
+
+  // バッジグリッド
+  const grid = document.getElementById('badge-grid');
+  BADGE_DEFS.forEach(b => {
+    const item = document.createElement('div');
+    item.className = 'badge-mini';
+    const icon = document.createElement('div');
+    icon.className = 'icon' + (earnedBadges.has(b.id) ? ' earned' : ' locked');
+    icon.textContent = b.icon;
+    const lbl = document.createElement('div');
+    lbl.className = 'lbl';
+    lbl.textContent = b.label;
+    item.append(icon, lbl);
+    grid.appendChild(item);
+  });
+})();
+
+document.getElementById('logout-btn').onclick = async () => {
+  await sb.auth.signOut();
+  location.href = 'index.html';
+};
+</script>
+</body>
+</html>

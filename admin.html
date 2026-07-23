@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理画面 — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; text-align: center; }
+  .stat-card .num { font-size: 32px; font-weight: 800; color: var(--primary); }
+  .stat-card .lbl { font-size: 12px; color: var(--text-muted); font-weight: 600; margin-top: 4px; }
+  .member-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .member-row:last-child { border-bottom: none; }
+  .member-avatar { width: 36px; height: 36px; background: var(--bg); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 800; color: var(--text-muted); flex-shrink: 0; }
+  .member-info { flex: 1; min-width: 0; }
+  .member-info .name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .member-info .meta { font-size: 12px; color: var(--text-muted); }
+  .member-prog { font-size: 12px; font-weight: 700; color: var(--primary); flex-shrink: 0; }
+  .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 20px 0 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>管理画面</h1>
+  <div class="subtitle" id="company-name">読み込み中...</div>
+</div>
+
+<div class="main">
+  <div class="stat-grid" id="stat-grid">
+    <div class="stat-card"><div class="num">-</div><div class="lbl">メンバー数</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="lbl">平均進捗</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="lbl">修了者</div></div>
+    <div class="stat-card"><div class="num">-</div><div class="lbl">アンケート回答</div></div>
+  </div>
+
+  <div class="section-title">メンバー進捗</div>
+  <div class="card" id="member-list">
+    <div style="text-align:center; color:var(--text-muted); padding:16px;">読み込み中...</div>
+  </div>
+
+  <div style="margin-top:24px;">
+    <button class="btn btn-outline" id="logout-btn">ログアウト</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script src="data/lessons.js"></script>
+<script>
+const TOTAL_SECTIONS = MODULES.reduce((sum, m) => sum + m.sections.length, 0);
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+  const uid = session.user.id;
+
+  // 管理者確認
+  const { data: me } = await sb.from('profiles').select('name, is_admin, company_id, companies(name)').eq('id', uid).maybeSingle();
+  if (!me || !me.is_admin) { location.href = 'home.html'; return; }
+
+  document.getElementById('company-name').textContent = me.companies?.name ?? '';
+
+  // 同社メンバー取得
+  const { data: members } = await sb.from('profiles').select('id, name, is_admin').eq('company_id', me.company_id);
+  const regularMembers = (members || []).filter(m => !m.is_admin);
+
+  // 進捗取得
+  const memberIds = regularMembers.map(m => m.id);
+  const { data: progress } = await sb.from('section_progress').select('user_id, module_id').in('user_id', memberIds);
+  const { data: surveys } = await sb.from('survey_responses').select('user_id').in('user_id', memberIds);
+  const { data: allBadges } = await sb.from('user_badges').select('user_id, badge_id').in('user_id', memberIds);
+
+  // 集計
+  const progressByUser = {};
+  (progress || []).forEach(p => {
+    if (!progressByUser[p.user_id]) progressByUser[p.user_id] = new Set();
+    progressByUser[p.user_id].add(p.module_id + '-' + p.module_id);
+  });
+
+  // モジュール完了数（バッジ獲得 = モジュール完了とみなす）
+  const modulesBadgeByUser = {};
+  (allBadges || []).forEach(b => {
+    if (!modulesBadgeByUser[b.user_id]) modulesBadgeByUser[b.user_id] = 0;
+    if (b.badge_id !== 'complete') modulesBadgeByUser[b.user_id]++;
+  });
+
+  const surveySet = new Set((surveys || []).map(s => s.user_id));
+  const completedUsers = regularMembers.filter(m => (modulesBadgeByUser[m.id] || 0) >= MODULES.length);
+  const totalProgress = regularMembers.reduce((sum, m) => sum + (modulesBadgeByUser[m.id] || 0), 0);
+  const avgProgress = regularMembers.length > 0 ? Math.round((totalProgress / (regularMembers.length * MODULES.length)) * 100) : 0;
+
+  // 統計カード更新
+  const statGrid = document.getElementById('stat-grid');
+  const nums = statGrid.querySelectorAll('.num');
+  const lbls = statGrid.querySelectorAll('.lbl');
+  nums[0].textContent = regularMembers.length;
+  nums[1].textContent = avgProgress + '%';
+  nums[2].textContent = completedUsers.length;
+  nums[3].textContent = surveySet.size;
+
+  // メンバーリスト
+  const list = document.getElementById('member-list');
+  list.innerHTML = '';
+
+  if (regularMembers.length === 0) {
+    const div = document.createElement('div');
+    div.style.cssText = 'text-align:center; color:var(--text-muted); padding:16px; font-size:14px;';
+    div.textContent = 'メンバーがいません';
+    list.appendChild(div);
+    return;
+  }
+
+  regularMembers.sort((a, b) => (modulesBadgeByUser[b.id] || 0) - (modulesBadgeByUser[a.id] || 0));
+
+  regularMembers.forEach(m => {
+    const row = document.createElement('div');
+    row.className = 'member-row';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'member-avatar';
+    avatar.textContent = m.name.charAt(0);
+
+    const info = document.createElement('div');
+    info.className = 'member-info';
+    const name = document.createElement('div');
+    name.className = 'name';
+    name.textContent = m.name;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = surveySet.has(m.id) ? 'アンケート済み' : 'アンケート未回答';
+    info.append(name, meta);
+
+    const prog = document.createElement('div');
+    prog.className = 'member-prog';
+    const modCount = modulesBadgeByUser[m.id] || 0;
+    prog.textContent = modCount + ' / ' + MODULES.length + '完了';
+
+    row.append(avatar, info, prog);
+    list.appendChild(row);
+  });
+})();
+
+document.getElementById('logout-btn').onclick = async () => {
+  await sb.auth.signOut();
+  location.href = 'index.html';
+};
+</script>
+</body>
+</html>

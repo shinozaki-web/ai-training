@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>事前アンケート — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page-header">
+  <h1>事前アンケート</h1>
+  <div class="subtitle">研修をカスタマイズするための質問です</div>
+</div>
+
+<div class="main">
+  <p style="font-size:14px; color:var(--text-muted); margin-bottom:20px; line-height:1.7;">
+    回答内容は集合研修の改善に活用します。正直にお答えください（所要時間：約3分）
+  </p>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="form-group">
+      <label>Q1. あなたの役職・担当業務を教えてください</label>
+      <select id="q1">
+        <option value="">選択してください</option>
+        <option value="management">経営・管理職</option>
+        <option value="sales">営業・販売</option>
+        <option value="office">事務・総務</option>
+        <option value="production">製造・現場</option>
+        <option value="it">IT・システム</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="form-group">
+      <label>Q2. 現在AIツールをどのくらい使っていますか？</label>
+      <select id="q2">
+        <option value="">選択してください</option>
+        <option value="never">まったく使っていない</option>
+        <option value="sometimes">たまに使う（月1〜2回）</option>
+        <option value="weekly">週に数回使う</option>
+        <option value="daily">ほぼ毎日使う</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="form-group">
+      <label>Q3. 最も時間がかかっていると感じる業務は？</label>
+      <select id="q3">
+        <option value="">選択してください</option>
+        <option value="email">メール・文書作成</option>
+        <option value="meeting">会議・議事録</option>
+        <option value="report">資料・レポート作成</option>
+        <option value="research">情報収集・調査</option>
+        <option value="data">データ整理・分析</option>
+        <option value="other">その他</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px;">
+    <div class="form-group">
+      <label>Q4. この研修で一番身につけたいことは？</label>
+      <select id="q4">
+        <option value="">選択してください</option>
+        <option value="basic">AIの基本的な使い方</option>
+        <option value="prompt">効果的な指示の出し方</option>
+        <option value="business">業務への具体的な活用</option>
+        <option value="efficiency">作業時間の短縮</option>
+        <option value="quality">アウトプットの品質向上</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:24px;">
+    <div class="form-group" style="margin-bottom:0;">
+      <label>Q5. AIに関して不安・心配なことがあれば自由に書いてください（任意）</label>
+      <textarea id="q5" placeholder="例：間違った情報を信じてしまわないか心配、使い方が難しそう…など"></textarea>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="submit-btn">回答を送信する</button>
+  <p id="error-msg" style="color:var(--danger); font-size:13px; margin-top:10px; display:none;"></p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script>
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+
+  // 既回答チェック
+  const { data } = await sb.from('survey_responses').select('id').eq('user_id', session.user.id).maybeSingle();
+  if (data) { location.href = 'home.html'; return; }
+})();
+
+document.getElementById('submit-btn').onclick = async () => {
+  const q1 = document.getElementById('q1').value;
+  const q2 = document.getElementById('q2').value;
+  const q3 = document.getElementById('q3').value;
+  const q4 = document.getElementById('q4').value;
+  const q5 = document.getElementById('q5').value.trim();
+  const errEl = document.getElementById('error-msg');
+  const btn = document.getElementById('submit-btn');
+
+  if (!q1 || !q2 || !q3 || !q4) {
+    errEl.textContent = 'Q1〜Q4はすべて選択してください';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+  btn.textContent = '送信中...';
+  btn.disabled = true;
+
+  const { data: { session } } = await sb.auth.getSession();
+  const { error } = await sb.from('survey_responses').insert({
+    user_id: session.user.id,
+    q1_role: q1,
+    q2_frequency: q2,
+    q3_time_consuming: q3,
+    q4_priority: q4,
+    q5_concerns: q5 || null
+  });
+
+  if (error) {
+    errEl.textContent = '送信に失敗しました。もう一度お試しください。';
+    errEl.style.display = 'block';
+    btn.textContent = '回答を送信する';
+    btn.disabled = false;
+    return;
+  }
+  location.href = 'home.html';
+};
+</script>
+</body>
+</html>

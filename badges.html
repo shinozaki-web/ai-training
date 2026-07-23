@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>バッジ — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .badge-full-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .badge-full-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 16px 8px;
+    background: var(--card);
+    border-radius: 16px;
+    border: 1px solid var(--border);
+  }
+  .badge-full-item.earned { border-color: var(--primary); background: #eff6ff; }
+  .badge-full-icon {
+    font-size: 36px;
+    line-height: 1;
+  }
+  .badge-full-item.locked .badge-full-icon { filter: grayscale(1); opacity: 0.3; }
+  .badge-full-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-align: center;
+    line-height: 1.4;
+  }
+  .badge-full-item.earned .badge-full-label { color: var(--primary); }
+  .badge-full-date {
+    font-size: 10px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+  .cert-wrap {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border-radius: 24px;
+    padding: 32px 24px;
+    text-align: center;
+    color: white;
+    margin-bottom: 20px;
+  }
+  .cert-wrap .trophy { font-size: 56px; margin-bottom: 12px; }
+  .cert-wrap h2 { font-size: 22px; font-weight: 800; margin-bottom: 8px; }
+  .cert-wrap p { font-size: 14px; opacity: 0.9; line-height: 1.7; }
+  .cert-detail {
+    background: rgba(255,255,255,0.15);
+    border-radius: 16px;
+    padding: 16px;
+    margin-top: 16px;
+    font-size: 13px;
+    line-height: 1.7;
+  }
+  .cert-not-yet {
+    background: var(--card);
+    border: 2px dashed var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    margin-bottom: 20px;
+  }
+  .cert-not-yet .icon { font-size: 40px; margin-bottom: 8px; }
+  .cert-not-yet h3 { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .cert-not-yet p { font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page-header">
+  <h1>バッジ & 修了証</h1>
+  <div class="subtitle" id="badge-count">0 / 7 バッジ獲得</div>
+</div>
+
+<div class="main">
+  <div id="cert-section"></div>
+
+  <div style="font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:12px; text-transform:uppercase; letter-spacing:0.06em;">
+    モジュールバッジ
+  </div>
+  <div class="badge-full-grid" id="badge-grid"></div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="home.html"><span class="icon">🏠</span>ホーム</a>
+  <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
+  <a href="badges.html" class="active"><span class="icon">🏅</span>バッジ</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script src="data/lessons.js"></script>
+<script>
+function formatDate(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+}
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+  const uid = session.user.id;
+
+  const { data: profile } = await sb.from('profiles').select('name, companies(name)').eq('id', uid).maybeSingle();
+  const { data: badges } = await sb.from('user_badges').select('badge_id, earned_at').eq('user_id', uid);
+
+  const earnedMap = {};
+  (badges || []).forEach(b => { earnedMap[b.badge_id] = b.earned_at; });
+
+  const moduleBadgeCount = MODULES.filter(m => earnedMap[m.badge.id]).length;
+  const hasComplete = !!earnedMap['complete'];
+
+  document.getElementById('badge-count').textContent = moduleBadgeCount + ' / ' + MODULES.length + ' バッジ獲得';
+
+  // 修了証セクション
+  const certSection = document.getElementById('cert-section');
+  if (hasComplete) {
+    certSection.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'cert-wrap';
+
+    const trophy = document.createElement('div');
+    trophy.className = 'trophy';
+    trophy.textContent = '🏆';
+
+    const h2 = document.createElement('h2');
+    h2.textContent = 'AI業務改善研修 修了証';
+
+    const p = document.createElement('p');
+    p.textContent = '全6モジュールを修了し、AIを活用した業務改善の基礎を習得しました。';
+
+    const detail = document.createElement('div');
+    detail.className = 'cert-detail';
+    const nameEl = document.createElement('div');
+    nameEl.textContent = '氏　名：' + (profile?.name ?? '');
+    const compEl = document.createElement('div');
+    compEl.textContent = '会　社：' + (profile?.companies?.name ?? '');
+    const dateEl = document.createElement('div');
+    dateEl.textContent = '修了日：' + formatDate(earnedMap['complete']);
+    const issuer = document.createElement('div');
+    issuer.style.marginTop = '8px';
+    issuer.textContent = '発行：門司港プログラミング教室';
+    detail.append(nameEl, compEl, dateEl, issuer);
+
+    wrap.append(trophy, h2, p, detail);
+    certSection.appendChild(wrap);
+  } else {
+    const remaining = MODULES.length - moduleBadgeCount;
+    const div = document.createElement('div');
+    div.className = 'cert-not-yet';
+    const icon = document.createElement('div');
+    icon.className = 'icon';
+    icon.textContent = '🔒';
+    const h3 = document.createElement('h3');
+    h3.textContent = '修了証（未取得）';
+    const p = document.createElement('p');
+    p.textContent = 'あと ' + remaining + ' モジュールのバッジを獲得すると解放されます';
+    div.append(icon, h3, p);
+    certSection.appendChild(div);
+  }
+
+  // バッジグリッド
+  const grid = document.getElementById('badge-grid');
+  MODULES.forEach(m => {
+    const earned = !!earnedMap[m.badge.id];
+    const item = document.createElement('div');
+    item.className = 'badge-full-item' + (earned ? ' earned' : ' locked');
+
+    const icon = document.createElement('div');
+    icon.className = 'badge-full-icon';
+    icon.textContent = m.badge.icon;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'badge-full-label';
+    lbl.textContent = m.badge.label;
+
+    const date = document.createElement('div');
+    date.className = 'badge-full-date';
+    date.textContent = earned ? formatDate(earnedMap[m.badge.id]) : 'ロック中';
+
+    item.append(icon, lbl, date);
+    grid.appendChild(item);
+  });
+})();
+</script>
+</body>
+</html>

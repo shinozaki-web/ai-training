@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>レッスン — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  .section-nav {
+    display: flex;
+    gap: 6px;
+    padding: 12px 20px;
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .section-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+    background: var(--card);
+  }
+  .section-dot.active { border-color: var(--primary); color: var(--primary); background: #eff6ff; }
+  .section-dot.done { background: var(--success); border-color: var(--success); color: white; }
+  .content-text {
+    font-size: 15px;
+    line-height: 1.85;
+    white-space: pre-wrap;
+    color: var(--text);
+  }
+  .badge-earned {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    border-radius: 20px;
+    padding: 24px;
+    text-align: center;
+    color: white;
+    margin-top: 16px;
+  }
+  .badge-earned .icon { font-size: 48px; margin-bottom: 8px; }
+  .badge-earned h3 { font-size: 18px; font-weight: 800; margin-bottom: 4px; }
+  .badge-earned p { font-size: 13px; opacity: 0.85; }
+</style>
+</head>
+<body>
+<div class="page-header" id="page-header">
+  <h1 id="module-title">読み込み中...</h1>
+  <div class="subtitle" id="section-subtitle"></div>
+</div>
+<div class="section-nav" id="section-nav"></div>
+
+<div class="main" id="main-content">
+</div>
+
+<div id="toast" class="toast"></div>
+
+<nav class="bottom-nav">
+  <a href="home.html"><span class="icon">🏠</span>ホーム</a>
+  <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
+  <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script src="data/lessons.js"></script>
+<script>
+let currentModule = null;
+let currentSectionIdx = 0;
+let doneSections = new Set();
+let uid = null;
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+function renderSectionNav() {
+  const nav = document.getElementById('section-nav');
+  nav.innerHTML = '';
+  currentModule.sections.forEach((s, i) => {
+    const dot = document.createElement('div');
+    dot.className = 'section-dot' +
+      (doneSections.has(s.id) ? ' done' : '') +
+      (i === currentSectionIdx && !doneSections.has(s.id) ? ' active' : '');
+    dot.textContent = doneSections.has(s.id) ? '✓' : (i + 1);
+    dot.onclick = () => { currentSectionIdx = i; renderSection(); };
+    nav.appendChild(dot);
+  });
+}
+
+function renderSection() {
+  const section = currentModule.sections[currentSectionIdx];
+  document.getElementById('section-subtitle').textContent =
+    (currentSectionIdx + 1) + ' / ' + currentModule.sections.length + '  ' + section.title;
+
+  const main = document.getElementById('main-content');
+  main.innerHTML = '';
+
+  // コンテンツカード
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.marginBottom = '16px';
+
+  const h2 = document.createElement('h2');
+  h2.style.cssText = 'font-size:16px; font-weight:800; margin-bottom:14px;';
+  h2.textContent = section.title;
+
+  const content = document.createElement('p');
+  content.className = 'content-text';
+  content.textContent = section.content;
+
+  card.append(h2, content);
+  main.appendChild(card);
+
+  // テンプレートブロック
+  if (section.templates && section.templates.length > 0) {
+    const templLabel = document.createElement('div');
+    templLabel.style.cssText = 'font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:10px; text-transform:uppercase; letter-spacing:0.05em;';
+    templLabel.textContent = 'コピペ用テンプレート';
+    main.appendChild(templLabel);
+
+    section.templates.forEach(t => {
+      const block = document.createElement('div');
+      block.className = 'template-block';
+
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'font-size:11px; color:#94a3b8; font-weight:700; margin-bottom:8px;';
+      lbl.textContent = t.label;
+
+      const pre = document.createElement('pre');
+      pre.textContent = t.text;
+
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'copy-btn';
+      copyBtn.textContent = 'コピー';
+      copyBtn.onclick = () => {
+        navigator.clipboard.writeText(t.text).then(() => showToast('コピーしました！'));
+      };
+
+      block.append(copyBtn, lbl, pre);
+      main.appendChild(block);
+    });
+  }
+
+  // 完了ボタン or 次へボタン
+  const isDone = doneSections.has(section.id);
+  const isLastSection = currentSectionIdx >= currentModule.sections.length - 1;
+
+  const btnArea = document.createElement('div');
+  btnArea.style.marginTop = '20px';
+
+  if (!isDone) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = 'このセクションを完了する ✓';
+    btn.onclick = () => completeSection(section.id);
+    btnArea.appendChild(btn);
+  } else if (!isLastSection) {
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary';
+    btn.textContent = '次のセクションへ →';
+    btn.onclick = () => { currentSectionIdx++; renderSection(); renderSectionNav(); window.scrollTo(0, 0); };
+    btnArea.appendChild(btn);
+  } else {
+    // 最終セクション完了済み → クイズへ
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-success';
+    btn.textContent = '確認クイズに挑戦する 🎯';
+    btn.onclick = () => { location.href = 'quiz.html?module=' + currentModule.id; };
+    btnArea.appendChild(btn);
+  }
+  main.appendChild(btnArea);
+
+  renderSectionNav();
+}
+
+async function completeSection(sectionId) {
+  const { error } = await sb.from('section_progress').upsert({
+    user_id: uid,
+    module_id: currentModule.id,
+    section_id: sectionId
+  }, { onConflict: 'user_id,module_id,section_id' });
+
+  if (error) { showToast('エラーが発生しました'); return; }
+
+  doneSections.add(sectionId);
+  showToast('セクション完了！');
+
+  const isLastSection = currentSectionIdx >= currentModule.sections.length - 1;
+  if (!isLastSection) {
+    setTimeout(() => { currentSectionIdx++; renderSection(); window.scrollTo(0, 0); }, 600);
+  } else {
+    renderSection();
+  }
+}
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+  uid = session.user.id;
+
+  const params = new URLSearchParams(location.search);
+  const moduleId = parseInt(params.get('module'));
+  currentModule = MODULES.find(m => m.id === moduleId);
+  if (!currentModule) { location.href = 'curriculum.html'; return; }
+
+  document.getElementById('module-title').textContent = currentModule.title;
+
+  // 進捗取得
+  const { data: progress } = await sb.from('section_progress')
+    .select('section_id')
+    .eq('user_id', uid)
+    .eq('module_id', moduleId);
+  (progress || []).forEach(p => doneSections.add(p.section_id));
+
+  // 未完了の最初のセクションから開始
+  const firstIncomplete = currentModule.sections.findIndex(s => !doneSections.has(s.id));
+  currentSectionIdx = firstIncomplete >= 0 ? firstIncomplete : 0;
+
+  renderSection();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カリキュラム — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="page-header">
+  <h1>カリキュラム</h1>
+  <div class="subtitle">全6モジュール</div>
+</div>
+
+<div class="main">
+  <div id="module-list" style="display:flex; flex-direction:column; gap:10px;">
+    <div class="card" style="text-align:center; color:var(--text-muted); padding:24px;">読み込み中...</div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <a href="home.html"><span class="icon">🏠</span>ホーム</a>
+  <a href="curriculum.html" class="active"><span class="icon">📚</span>カリキュラム</a>
+  <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script src="data/lessons.js"></script>
+<script>
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { location.href = 'index.html'; return; }
+
+  const uid = session.user.id;
+  const { data: progress } = await sb.from('section_progress').select('module_id, section_id').eq('user_id', uid);
+  const progressMap = {};
+  (progress || []).forEach(p => {
+    if (!progressMap[p.module_id]) progressMap[p.module_id] = new Set();
+    progressMap[p.module_id].add(p.section_id);
+  });
+
+  const list = document.getElementById('module-list');
+  list.innerHTML = '';
+
+  MODULES.forEach((m, idx) => {
+    const done = progressMap[m.id];
+    const doneCount = done ? done.size : 0;
+    const totalSections = m.sections.length;
+    const isCompleted = doneCount >= totalSections;
+    const isLocked = idx > 0 && !isCompleted && (() => {
+      const prev = MODULES[idx - 1];
+      const prevDone = progressMap[prev.id];
+      return !prevDone || prevDone.size < prev.sections.length;
+    })();
+
+    const a = document.createElement('a');
+    a.href = isLocked ? '#' : 'lesson.html?module=' + m.id;
+    a.className = 'module-card' + (isLocked ? ' locked' : '') + (isCompleted ? ' completed' : '');
+
+    const numDiv = document.createElement('div');
+    numDiv.className = 'module-num';
+    numDiv.textContent = isLocked ? '🔒' : (isCompleted ? '✓' : m.id);
+
+    const info = document.createElement('div');
+    info.className = 'module-info';
+
+    const h3 = document.createElement('h3');
+    h3.textContent = m.title;
+
+    const p = document.createElement('p');
+    if (isLocked) {
+      p.textContent = '前のモジュールを完了してください';
+    } else {
+      p.textContent = doneCount + ' / ' + totalSections + ' セクション' + (isCompleted ? ' · バッジ獲得！' : '');
+    }
+
+    const badgeSpan = document.createElement('span');
+    badgeSpan.style.cssText = 'font-size:20px; margin-left:auto; flex-shrink:0;';
+    badgeSpan.textContent = m.badge.icon;
+
+    info.append(h3, p);
+    a.append(numDiv, info, badgeSpan);
+    list.appendChild(a);
+  });
+})();
+</script>
+</body>
+</html>
