@@ -64,7 +64,16 @@ ALTER TABLE quiz_results     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_badges      ENABLE ROW LEVEL SECURITY;
 
 -- 自分のデータのみ読み書き可
-CREATE POLICY "own profile"   ON profiles        FOR ALL USING (auth.uid() = id);
+-- profiles は操作ごとに分割（is_admin の権限昇格を防ぐ）
+CREATE POLICY "own profile read"   ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "own profile insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
+CREATE POLICY "own profile update" ON profiles FOR UPDATE
+  USING (auth.uid() = id)
+  WITH CHECK (
+    auth.uid() = id
+    AND is_admin = (SELECT is_admin FROM profiles WHERE id = auth.uid())
+  );
+
 CREATE POLICY "own survey"    ON survey_responses FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "own progress"  ON section_progress FOR ALL USING (auth.uid() = user_id);
 CREATE POLICY "own quiz"      ON quiz_results     FOR ALL USING (auth.uid() = user_id);
