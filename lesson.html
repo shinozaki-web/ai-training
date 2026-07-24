@@ -150,6 +150,14 @@ function renderSection() {
       block.append(copyBtn, lbl, pre);
       main.appendChild(block);
     });
+
+    const claudeBtn = document.createElement('a');
+    claudeBtn.href = 'https://claude.ai';
+    claudeBtn.target = '_blank';
+    claudeBtn.rel = 'noopener noreferrer';
+    claudeBtn.style.cssText = 'display:flex; align-items:center; justify-content:center; gap:8px; background:#d97706; color:white; border-radius:14px; padding:14px; font-size:15px; font-weight:800; text-decoration:none; margin-top:8px;';
+    claudeBtn.textContent = '🤖 Claudeを開く →';
+    main.appendChild(claudeBtn);
   }
 
   // 完了ボタン or 次へボタン
