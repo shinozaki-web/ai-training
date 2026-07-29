@@ -12,7 +12,8 @@ Deno.serve(async (request) => {
     const authorization = request.headers.get("Authorization") || "";
     const accessToken = authorization.replace(/^Bearer\s+/i, "");
     if (!accessToken) return json({ error: "Unauthorized" }, 401);
-    const { data: { user }, error: authError } = await userClient(authorization).auth.getUser(accessToken);
+    const userApi = userClient(authorization);
+    const { data: { user }, error: authError } = await userApi.auth.getUser(accessToken);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
     const body = await request.json();
@@ -26,9 +27,14 @@ Deno.serve(async (request) => {
     }
 
     const admin = adminClient();
-    const { data: profile, error: profileError } = await admin
+    const { data: profile, error: profileError } = await userApi
       .from("profiles").select("name, company_id").eq("id", user.id).single();
-    if (profileError || !profile?.company_id) return json({ error: "Profile not found" }, 403);
+    if (profileError) {
+      console.error("Profile lookup failed", profileError);
+      return json({ error: "Profile lookup failed" }, 500);
+    }
+    if (!profile) return json({ error: "Profile not found" }, 403);
+    if (!profile.company_id) return json({ error: "Company not assigned" }, 403);
 
     const { data: feedback, error: insertError } = await admin.from("feedback_requests")
       .insert({

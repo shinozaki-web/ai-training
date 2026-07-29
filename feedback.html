@@ -144,7 +144,9 @@ document.getElementById('feedback-form').addEventListener('submit', async event 
     const messages = {
       Unauthorized: 'ログイン情報の有効期限が切れました。ログインし直してください。',
       'Invalid input': '入力内容を確認してください。',
-      'Profile not found': '受講者プロフィールまたは会社設定を確認してください。'
+      'Profile not found': '受講者プロフィールが見つかりません。',
+      'Company not assigned': '受講者プロフィールに会社が設定されていません。',
+      'Profile lookup failed': 'プロフィールを読み込めませんでした。運営へお知らせください。'
     };
     status.textContent = messages[error.message] || '送信できませんでした。時間をおいてもう一度お試しください。';
   } finally {

@@ -10,10 +10,11 @@ Deno.serve(async (request) => {
     const authorization = request.headers.get("Authorization") || "";
     const accessToken = authorization.replace(/^Bearer\s+/i, "");
     if (!accessToken) return json({ error: "Unauthorized" }, 401);
-    const { data: { user }, error: authError } = await userClient(authorization).auth.getUser(accessToken);
+    const userApi = userClient(authorization);
+    const { data: { user }, error: authError } = await userApi.auth.getUser(accessToken);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
-    const { data: approver, error: profileError } = await admin.from("profiles")
+    const { data: approver, error: profileError } = await userApi.from("profiles")
       .select("is_admin, company_id").eq("id", user.id).single();
     if (profileError || !approver?.is_admin) return json({ error: "Admin only" }, 403);
 
