@@ -55,6 +55,8 @@ Settings → Actions → General で Workflow permissions を Read and write に
 
 `master` は保護ブランチにし、PRを必須にしてください。承認ボタンは実装PRを作りますが、
 本番反映はPRのマージ時だけ行われます。
+自動作成されたPRがマージされると、`complete-feedback.yml` が管理画面の状態を
+「対応済み」へ更新します。
 
 ## 3. 動作確認
 

@@ -1,0 +1,53 @@
+name: Complete merged feedback
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      feedback_id:
+        description: Supabase feedback UUID
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  complete:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       startsWith(github.event.pull_request.head.ref, 'codex/feedback-'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Resolve feedback ID
+        id: feedback
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_ID: ${{ inputs.feedback_id }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            feedback_id="$DISPATCH_ID"
+          else
+            feedback_id="${HEAD_REF#codex/feedback-}"
+          fi
+          if ! [[ "$feedback_id" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$ ]]; then
+            echo "Invalid feedback ID"
+            exit 1
+          fi
+          echo "id=$feedback_id" >> "$GITHUB_OUTPUT"
+
+      - name: Report production completion
+        env:
+          CALLBACK_URL: ${{ secrets.FEEDBACK_CALLBACK_URL }}
+          CALLBACK_SECRET: ${{ secrets.AUTOMATION_CALLBACK_SECRET }}
+          FEEDBACK_ID: ${{ steps.feedback.outputs.id }}
+        run: |
+          jq -n --arg id "$FEEDBACK_ID" '{id:$id,status:"completed"}' |
+          curl --fail-with-body --silent --show-error \
+            --request POST "$CALLBACK_URL" \
+            --header "content-type: application/json" \
+            --header "x-automation-secret: $CALLBACK_SECRET" \
+            --data-binary @-

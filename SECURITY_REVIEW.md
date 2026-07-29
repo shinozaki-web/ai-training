@@ -24,6 +24,7 @@ No unresolved high-severity findings were identified in the new feedback flow.
 - Codex runs with a workspace-write sandbox and no interactive elevation.
 - The Codex Action drops sudo before model-controlled work and checkout credentials are not persisted.
 - Automation creates a PR and cannot merge or deploy directly.
+- Completion callbacks run only for merged `codex/feedback-<UUID>` branches or an explicit trusted dispatch.
 - Third-party GitHub Actions and Codex CLI are pinned to reviewed versions.
 - RLS admin checks use narrowly granted `SECURITY DEFINER` helpers with a fixed `search_path`.
 
