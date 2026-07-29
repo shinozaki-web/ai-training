@@ -160,6 +160,9 @@ CREATE INDEX feedback_requests_company_status_created_idx
 
 ALTER TABLE feedback_requests ENABLE ROW LEVEL SECURITY;
 
+GRANT SELECT ON TABLE feedback_requests TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE feedback_requests TO service_role;
+
 -- 生徒は自分の報告だけを参照できる。作成・承認は Edge Function 経由。
 CREATE POLICY "own feedback read"
   ON feedback_requests FOR SELECT
