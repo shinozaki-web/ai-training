@@ -10,7 +10,9 @@ Deno.serve(async (request) => {
 
   try {
     const authorization = request.headers.get("Authorization") || "";
-    const { data: { user }, error: authError } = await userClient(authorization).auth.getUser();
+    const accessToken = authorization.replace(/^Bearer\s+/i, "");
+    if (!accessToken) return json({ error: "Unauthorized" }, 401);
+    const { data: { user }, error: authError } = await userClient(authorization).auth.getUser(accessToken);
     if (authError || !user) return json({ error: "Unauthorized" }, 401);
 
     const body = await request.json();

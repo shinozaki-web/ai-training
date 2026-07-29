@@ -236,14 +236,17 @@ async function decideFeedback(id, action, button) {
   button.disabled = true;
   const original = button.textContent;
   button.textContent = action === 'approve' ? '実装を依頼中...' : '処理中...';
-  const { data, error } = await sb.functions.invoke('feedback-approve', { body: { id, action } });
+  const { data: { session } } = await sb.auth.getSession();
+  const { data, error } = await sb.functions.invoke('feedback-approve', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+    body: { id, action }
+  });
   if (error || !data?.ok) {
     button.disabled = false;
     button.textContent = original;
     alert(data?.error || '処理できませんでした。もう一度お試しください。');
     return;
   }
-  const { data: { session } } = await sb.auth.getSession();
   const { data: profile } = await sb.from('profiles').select('company_id').eq('id', session.user.id).single();
   await loadFeedback(profile.company_id);
 }

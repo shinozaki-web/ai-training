@@ -117,8 +117,9 @@ document.getElementById('feedback-form').addEventListener('submit', async event 
   button.disabled = true;
   status.className = 'status';
   try {
-    await requireSession();
+    const session = await requireSession();
     const { error } = await sb.functions.invoke('feedback-submit', {
+      headers: { Authorization: `Bearer ${session.access_token}` },
       body: {
         category: document.getElementById('category').value,
         title: document.getElementById('title').value.trim(),
@@ -126,14 +127,26 @@ document.getElementById('feedback-form').addEventListener('submit', async event 
         page_url: location.href
       }
     });
-    if (error) throw error;
+    if (error) {
+      let code = '';
+      try {
+        const payload = await error.context.json();
+        code = payload?.error || '';
+      } catch (_) {}
+      throw new Error(code);
+    }
     event.target.reset();
     status.className = 'status success';
     status.textContent = '送信しました。運営に通知されました。';
     await loadHistory();
-  } catch (_) {
+  } catch (error) {
     status.className = 'status error';
-    status.textContent = '送信できませんでした。時間をおいてもう一度お試しください。';
+    const messages = {
+      Unauthorized: 'ログイン情報の有効期限が切れました。ログインし直してください。',
+      'Invalid input': '入力内容を確認してください。',
+      'Profile not found': '受講者プロフィールまたは会社設定を確認してください。'
+    };
+    status.textContent = messages[error.message] || '送信できませんでした。時間をおいてもう一度お試しください。';
   } finally {
     button.disabled = false;
   }
