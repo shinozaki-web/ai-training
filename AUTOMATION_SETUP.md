@@ -3,7 +3,7 @@
 生徒の報告から実装PRまでの経路は次のとおりです。
 
 1. 生徒が `feedback.html` から送信
-2. Supabase Edge Function が保存し、管理者へメール通知
+2. Supabase Edge Function が保存し、担当者付きGitHub Issueと任意のメールで通知
 3. 管理者が `admin.html` で「承認して実装を開始」
 4. Edge Function が GitHub Actions を起動
 5. Codex が修正し、検証後にPRを作成
@@ -39,7 +39,7 @@ supabase secrets set \
 
 `GITHUB_TOKEN` は対象リポジトリだけに限定し、Actions の write 権限だけを付与します。
 メール通知を使わない場合、`RESEND_API_KEY`、`NOTIFICATION_EMAIL`、
-`NOTIFICATION_FROM` は省略できます。管理画面には常に表示されます。
+`NOTIFICATION_FROM` は省略できます。管理画面と担当者付きGitHub Issueには常に表示されます。
 
 ## 2. GitHub
 

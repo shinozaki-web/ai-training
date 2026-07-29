@@ -16,6 +16,7 @@ No unresolved high-severity findings were identified in the new feedback flow.
 - Service role, GitHub, OpenAI, Resend, and callback credentials remain server-side.
 - Callback updates require a dedicated secret and accept only known statuses and GitHub PR URLs.
 - User text is rendered with `textContent`; notification HTML is escaped.
+- The notification Issue is created only in the private implementation repository and marks its body as untrusted input.
 - Feedback is explicitly treated as untrusted data in the Codex prompt.
 - Codex runs with a workspace-write sandbox and no interactive elevation.
 - Automation creates a PR and cannot merge or deploy directly.
