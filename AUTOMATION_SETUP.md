@@ -45,7 +45,8 @@ supabase secrets set \
 
 リポジトリの Actions secrets に以下を登録します。
 
-- `OPENAI_API_KEY`: Codex CLI 用の OpenAI API key
+- `OPENAI_API_KEY`: Codex CLI 用の OpenAI API key。ワークフローは実行ステップ内だけ
+  `CODEX_API_KEY` として渡します。
 - `FEEDBACK_CALLBACK_URL`: `https://lnszvaeomaeukazkfilm.supabase.co/functions/v1/feedback-status`
 - `AUTOMATION_CALLBACK_SECRET`: Supabase 側と同じランダム文字列
 

@@ -16,6 +16,7 @@ No unresolved high-severity findings were identified in the new feedback flow.
 - Approval re-verifies `is_admin` and company membership server-side.
 - A compare-and-update status transition prevents duplicate approvals.
 - Service role, GitHub, OpenAI, Resend, and callback credentials remain server-side.
+- The OpenAI credential is exposed as `CODEX_API_KEY` only to the Codex execution step.
 - Callback updates require a dedicated secret and accept only known statuses and GitHub PR URLs.
 - User text is rendered with `textContent`; notification HTML is escaped.
 - The notification Issue is created only in the private implementation repository and marks its body as untrusted input.

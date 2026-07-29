@@ -83,7 +83,7 @@ jobs:
 
       - name: Implement with Codex
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CODEX_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: codex --sandbox workspace-write --ask-for-approval never exec "$(cat /tmp/codex-feedback-prompt.json)"
 
       - name: Verify a change was produced
