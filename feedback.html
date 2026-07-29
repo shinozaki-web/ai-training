@@ -74,6 +74,9 @@ const labels = {
   pending: '確認待ち', implementing: '実装中', in_review: '確認中',
   completed: '対応済み', rejected: '見送り', failed: '要再確認'
 };
+const categoryLabels = {
+  bug: '不具合', improvement: '改善', content: '講座拡充'
+};
 
 async function requireSession() {
   const { data: { session } } = await sb.auth.getSession();
@@ -103,7 +106,7 @@ async function loadHistory() {
     status.textContent = labels[item.status] || item.status;
     const meta = document.createElement('div');
     meta.className = 'request-meta';
-    meta.textContent = new Date(item.created_at).toLocaleString('ja-JP');
+    meta.textContent = `種類：${categoryLabels[item.category] || item.category}・${new Date(item.created_at).toLocaleString('ja-JP')}`;
     top.append(title, status);
     row.append(top, meta);
     box.appendChild(row);
