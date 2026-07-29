@@ -46,13 +46,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
-        with:
-          node-version: "22"
-
-      - name: Install Codex CLI
-        run: npm install --global @openai/codex@0.146.0
+          persist-credentials: false
 
       - name: Build trusted implementation prompt
         run: |
@@ -82,9 +76,15 @@ jobs:
             }' > /tmp/codex-feedback-prompt.json
 
       - name: Implement with Codex
-        env:
-          CODEX_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: codex --sandbox workspace-write --ask-for-approval never exec "$(cat /tmp/codex-feedback-prompt.json)"
+        uses: openai/codex-action@52fe01ec70a42f454c9d2ebd47598f9fd6893d56 # v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: /tmp/codex-feedback-prompt.json
+          sandbox: workspace-write
+          safety-strategy: drop-sudo
+          codex-version: "0.146.0"
+          effort: medium
+          output-file: /tmp/codex-final-message.md
 
       - name: Verify a change was produced
         run: |

@@ -16,12 +16,13 @@ No unresolved high-severity findings were identified in the new feedback flow.
 - Approval re-verifies `is_admin` and company membership server-side.
 - A compare-and-update status transition prevents duplicate approvals.
 - Service role, GitHub, OpenAI, Resend, and callback credentials remain server-side.
-- The OpenAI credential is exposed as `CODEX_API_KEY` only to the Codex execution step.
+- The official Codex GitHub Action isolates the OpenAI credential behind its Responses API proxy.
 - Callback updates require a dedicated secret and accept only known statuses and GitHub PR URLs.
 - User text is rendered with `textContent`; notification HTML is escaped.
 - The notification Issue is created only in the private implementation repository and marks its body as untrusted input.
 - Feedback is explicitly treated as untrusted data in the Codex prompt.
 - Codex runs with a workspace-write sandbox and no interactive elevation.
+- The Codex Action drops sudo before model-controlled work and checkout credentials are not persisted.
 - Automation creates a PR and cannot merge or deploy directly.
 - Third-party GitHub Actions and Codex CLI are pinned to reviewed versions.
 - RLS admin checks use narrowly granted `SECURITY DEFINER` helpers with a fixed `search_path`.

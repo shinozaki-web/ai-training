@@ -25,7 +25,7 @@ Deno.serve(async (request) => {
       status,
       pull_request_url: pullRequestUrl || null,
       updated_at: new Date().toISOString(),
-    }).eq("id", id).eq("status", "implementing").select("title").maybeSingle();
+    }).eq("id", id).in("status", ["implementing", "failed"]).select("title").maybeSingle();
     if (error) throw error;
     if (!item) return json({ error: "Not found or invalid state" }, 409);
 
