@@ -9,6 +9,7 @@ No unresolved high-severity findings were identified in the new feedback flow.
 ## Controls verified
 
 - Feedback requires a valid Supabase user session.
+- Submit and approval functions verify the bearer token with `auth.getUser()` inside the function; the gateway's legacy JWT check is intentionally disabled.
 - Category and field lengths are validated again in the Edge Function.
 - Browser clients cannot insert, approve, reject, or update automation state directly.
 - Approval re-verifies `is_admin` and company membership server-side.

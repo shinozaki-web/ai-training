@@ -1,0 +1,13 @@
+project_id = "lnszvaeomaeukazkfilm"
+
+# Each function performs its own auth.getUser() or shared-secret verification.
+# Disabling the gateway's legacy JWT check avoids rejecting valid asymmetric
+# Supabase Auth tokens before the function can verify them.
+[functions.feedback-submit]
+verify_jwt = false
+
+[functions.feedback-approve]
+verify_jwt = false
+
+[functions.feedback-status]
+verify_jwt = false

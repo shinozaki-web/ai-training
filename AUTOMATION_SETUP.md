@@ -19,8 +19,8 @@ Supabase CLI をインストールしてログイン後、プロジェクトル�
 
 ```sh
 supabase link --project-ref lnszvaeomaeukazkfilm
-supabase functions deploy feedback-submit
-supabase functions deploy feedback-approve
+supabase functions deploy feedback-submit --no-verify-jwt
+supabase functions deploy feedback-approve --no-verify-jwt
 supabase functions deploy feedback-status --no-verify-jwt
 ```
 
