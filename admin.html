@@ -18,6 +18,15 @@
   .member-info .meta { font-size: 12px; color: var(--text-muted); }
   .member-prog { font-size: 12px; font-weight: 700; color: var(--primary); flex-shrink: 0; }
   .section-title { font-size: 13px; font-weight: 700; color: var(--text-muted); margin: 20px 0 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  .feedback-card { margin-bottom:12px; }
+  .feedback-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .feedback-title { font-size:15px; font-weight:800; }
+  .feedback-meta { color:var(--text-muted); font-size:11px; margin-top:5px; }
+  .feedback-body { white-space:pre-wrap; font-size:13px; line-height:1.7; margin:12px 0; overflow-wrap:anywhere; }
+  .feedback-actions { display:grid; grid-template-columns:2fr 1fr; gap:8px; }
+  .feedback-actions .btn { padding:10px 12px; font-size:13px; }
+  .type-pill { border-radius:999px; padding:4px 8px; background:#e2e8f0; color:#475569; font-size:10px; font-weight:700; flex-shrink:0; }
+  .status-link { display:inline-block; color:var(--primary); font-size:12px; font-weight:700; margin-top:8px; }
 </style>
 </head>
 <body>
@@ -37,6 +46,11 @@
   <div class="section-title">メンバー進捗</div>
   <div class="card" id="member-list">
     <div style="text-align:center; color:var(--text-muted); padding:16px;">読み込み中...</div>
+  </div>
+
+  <div class="section-title">改善リクエスト</div>
+  <div id="feedback-list">
+    <div class="card empty-state">読み込み中...</div>
   </div>
 
   <div style="margin-top:24px;">
@@ -60,6 +74,8 @@ const TOTAL_SECTIONS = MODULES.reduce((sum, m) => sum + m.sections.length, 0);
   if (!me || !me.is_admin) { location.href = 'home.html'; return; }
 
   document.getElementById('company-name').textContent = me.companies?.name ?? '';
+
+  await loadFeedback(me.company_id);
 
   // 同社メンバー取得
   const { data: members } = await sb.from('profiles').select('id, name, is_admin').eq('company_id', me.company_id);
@@ -140,6 +156,97 @@ const TOTAL_SECTIONS = MODULES.reduce((sum, m) => sum + m.sections.length, 0);
     list.appendChild(row);
   });
 })();
+
+const feedbackTypes = { bug: '不具合', improvement: '改善', content: '講座拡充' };
+const feedbackStatuses = {
+  pending: '確認待ち', implementing: '実装中', in_review: 'PR確認中',
+  completed: '対応済み', rejected: '見送り', failed: '要再確認'
+};
+
+async function loadFeedback(companyId) {
+  const { data, error } = await sb.from('feedback_requests')
+    .select('id, category, title, description, page_url, status, pull_request_url, created_at, reporter:profiles!feedback_requests_user_id_fkey(name)')
+    .eq('company_id', companyId)
+    .order('created_at', { ascending: false });
+  const list = document.getElementById('feedback-list');
+  list.replaceChildren();
+  if (error) {
+    const div = document.createElement('div');
+    div.className = 'card empty-state';
+    div.textContent = 'リクエストを読み込めませんでした。';
+    list.appendChild(div);
+    return;
+  }
+  if (!data?.length) {
+    const div = document.createElement('div');
+    div.className = 'card empty-state';
+    div.textContent = '新しいリクエストはありません。';
+    list.appendChild(div);
+    return;
+  }
+  data.forEach(item => {
+    const card = document.createElement('article');
+    card.className = 'card feedback-card';
+    const head = document.createElement('div');
+    head.className = 'feedback-head';
+    const heading = document.createElement('div');
+    const title = document.createElement('div');
+    title.className = 'feedback-title';
+    title.textContent = item.title;
+    const meta = document.createElement('div');
+    meta.className = 'feedback-meta';
+    meta.textContent = `${item.reporter?.name || '受講者'}・${new Date(item.created_at).toLocaleString('ja-JP')}・${feedbackStatuses[item.status] || item.status}`;
+    heading.append(title, meta);
+    const type = document.createElement('span');
+    type.className = 'type-pill';
+    type.textContent = feedbackTypes[item.category] || item.category;
+    head.append(heading, type);
+    const body = document.createElement('div');
+    body.className = 'feedback-body';
+    body.textContent = item.description;
+    card.append(head, body);
+    if (item.status === 'pending' || item.status === 'failed') {
+      const actions = document.createElement('div');
+      actions.className = 'feedback-actions';
+      const approve = document.createElement('button');
+      approve.className = 'btn btn-primary';
+      approve.textContent = '承認して実装を開始';
+      approve.onclick = () => decideFeedback(item.id, 'approve', approve);
+      const reject = document.createElement('button');
+      reject.className = 'btn btn-outline';
+      reject.textContent = '見送る';
+      reject.onclick = () => decideFeedback(item.id, 'reject', reject);
+      actions.append(approve, reject);
+      card.appendChild(actions);
+    }
+    if (item.pull_request_url) {
+      const link = document.createElement('a');
+      link.className = 'status-link';
+      link.href = item.pull_request_url;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = '実装PRを確認する →';
+      card.appendChild(link);
+    }
+    list.appendChild(card);
+  });
+}
+
+async function decideFeedback(id, action, button) {
+  button.disabled = true;
+  const original = button.textContent;
+  button.textContent = action === 'approve' ? '実装を依頼中...' : '処理中...';
+  const { data, error } = await sb.functions.invoke('feedback-approve', { body: { id, action } });
+  if (error || !data?.ok) {
+    button.disabled = false;
+    button.textContent = original;
+    alert(data?.error || '処理できませんでした。もう一度お試しください。');
+    return;
+  }
+  const { data: { session } } = await sb.auth.getSession();
+  const { data: profile } = await sb.from('profiles').select('company_id').eq('id', session.user.id).single();
+  await loadFeedback(profile.company_id);
+}
 
 document.getElementById('logout-btn').onclick = async () => {
   await sb.auth.signOut();

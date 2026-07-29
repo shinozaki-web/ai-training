@@ -131,6 +131,12 @@ body {
 }
 .bottom-nav a.active { color: var(--primary); }
 .bottom-nav a .icon { font-size: 22px; }
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 8px;
+  font-size: 13px;
+}
 
 /* ---------- プログレスバー ---------- */
 .progress-bar {

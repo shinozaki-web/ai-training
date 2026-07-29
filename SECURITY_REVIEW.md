@@ -1,0 +1,31 @@
+# Security review — feedback automation
+
+Date: 2026-07-29
+
+## Result
+
+No unresolved high-severity findings were identified in the new feedback flow.
+
+## Controls verified
+
+- Feedback requires a valid Supabase user session.
+- Category and field lengths are validated again in the Edge Function.
+- Browser clients cannot insert, approve, reject, or update automation state directly.
+- Approval re-verifies `is_admin` and company membership server-side.
+- A compare-and-update status transition prevents duplicate approvals.
+- Service role, GitHub, OpenAI, Resend, and callback credentials remain server-side.
+- Callback updates require a dedicated secret and accept only known statuses and GitHub PR URLs.
+- User text is rendered with `textContent`; notification HTML is escaped.
+- Feedback is explicitly treated as untrusted data in the Codex prompt.
+- Codex runs with a workspace-write sandbox and no interactive elevation.
+- Automation creates a PR and cannot merge or deploy directly.
+- Third-party GitHub Actions and Codex CLI are pinned to reviewed versions.
+- RLS admin checks use narrowly granted `SECURITY DEFINER` helpers with a fixed `search_path`.
+
+## Deployment requirements
+
+- Protect `master` and require pull requests before merging.
+- Use a fine-grained GitHub token restricted to this repository.
+- Use a long, random callback secret and rotate it if disclosed.
+- Keep production deployment separate from the implementation workflow.
+- Re-run the repository security review before production deployment.
