@@ -23,6 +23,20 @@
   .feedback-title { font-size:15px; font-weight:800; }
   .feedback-meta { color:var(--text-muted); font-size:11px; margin-top:5px; }
   .feedback-body { white-space:pre-wrap; font-size:13px; line-height:1.7; margin:12px 0; overflow-wrap:anywhere; }
+  .feedback-label { color:var(--text-muted); font-size:11px; font-weight:800; letter-spacing:.04em; margin-bottom:6px; }
+  .feedback-original { background:var(--bg); border:1px solid var(--border); border-radius:12px; padding:12px; margin:12px 0; }
+  .feedback-original .feedback-title { font-size:14px; }
+  .feedback-original .feedback-body { margin:8px 0 0; }
+  .feedback-editor { border:2px solid #bfdbfe; background:#eff6ff; border-radius:14px; padding:14px; margin:12px 0; }
+  .feedback-editor-title { color:#1e40af; font-size:14px; font-weight:800; margin-bottom:4px; }
+  .feedback-editor-help { color:#475569; font-size:12px; line-height:1.6; margin-bottom:12px; }
+  .feedback-editor label { display:block; color:#334155; font-size:12px; font-weight:800; margin:10px 0 6px; }
+  .feedback-editor input, .feedback-editor textarea { width:100%; box-sizing:border-box; }
+  .feedback-editor textarea { min-height:150px; resize:vertical; }
+  .feedback-approved { border-left:4px solid #22c55e; background:#f0fdf4; border-radius:10px; padding:12px; margin:12px 0; }
+  .feedback-approved .feedback-title { font-size:14px; }
+  .feedback-approved .feedback-body { margin:8px 0 0; }
+  .feedback-action-status { min-height:18px; color:#b91c1c; font-size:12px; margin-top:8px; }
   .feedback-actions { display:grid; grid-template-columns:2fr 1fr; gap:8px; }
   .feedback-actions .btn { padding:10px 12px; font-size:13px; }
   .type-pill { border-radius:999px; padding:4px 8px; background:#e2e8f0; color:#475569; font-size:10px; font-weight:700; flex-shrink:0; }
@@ -165,7 +179,7 @@ const feedbackStatuses = {
 
 async function loadFeedback(companyId) {
   const { data, error } = await sb.from('feedback_requests')
-    .select('id, category, title, description, page_url, status, pull_request_url, created_at, reporter:profiles!feedback_requests_user_id_fkey(name)')
+    .select('id, category, title, description, implementation_title, implementation_description, page_url, status, pull_request_url, created_at, edited_at, reporter:profiles!feedback_requests_user_id_fkey(name)')
     .eq('company_id', companyId)
     .order('created_at', { ascending: false });
   const list = document.getElementById('feedback-list');
@@ -201,23 +215,84 @@ async function loadFeedback(companyId) {
     type.className = 'type-pill';
     type.textContent = feedbackTypes[item.category] || item.category;
     head.append(heading, type);
+
+    const original = document.createElement('div');
+    original.className = 'feedback-original';
+    const originalLabel = document.createElement('div');
+    originalLabel.className = 'feedback-label';
+    originalLabel.textContent = '受講者からの原文（変更されません）';
+    const originalTitle = document.createElement('div');
+    originalTitle.className = 'feedback-title';
+    originalTitle.textContent = item.title;
     const body = document.createElement('div');
     body.className = 'feedback-body';
     body.textContent = item.description;
-    card.append(head, body);
+    original.append(originalLabel, originalTitle, body);
+    card.append(head, original);
+
     if (item.status === 'pending' || item.status === 'failed') {
+      const editor = document.createElement('div');
+      editor.className = 'feedback-editor';
+      const editorTitle = document.createElement('div');
+      editorTitle.className = 'feedback-editor-title';
+      editorTitle.textContent = '実装用の指示を編集';
+      const editorHelp = document.createElement('div');
+      editorHelp.className = 'feedback-editor-help';
+      editorHelp.textContent = '受講者の意図を、どこを・どのように直すかが伝わる具体的な指示に整えてから承認してください。';
+      const titleLabel = document.createElement('label');
+      titleLabel.textContent = '実装用タイトル';
+      const instructionTitle = document.createElement('input');
+      instructionTitle.type = 'text';
+      instructionTitle.maxLength = 120;
+      instructionTitle.required = true;
+      instructionTitle.value = item.implementation_title || item.title;
+      const descriptionLabel = document.createElement('label');
+      descriptionLabel.textContent = '実装内容・完了条件';
+      const instructionDescription = document.createElement('textarea');
+      instructionDescription.maxLength = 4000;
+      instructionDescription.required = true;
+      instructionDescription.value = item.implementation_description || item.description;
+      editor.append(
+        editorTitle,
+        editorHelp,
+        titleLabel,
+        instructionTitle,
+        descriptionLabel,
+        instructionDescription
+      );
+      card.appendChild(editor);
+
       const actions = document.createElement('div');
       actions.className = 'feedback-actions';
       const approve = document.createElement('button');
       approve.className = 'btn btn-primary';
-      approve.textContent = '承認して実装を開始';
-      approve.onclick = () => decideFeedback(item.id, 'approve', approve);
+      approve.textContent = '編集内容を承認して実装へ';
       const reject = document.createElement('button');
       reject.className = 'btn btn-outline';
       reject.textContent = '見送る';
-      reject.onclick = () => decideFeedback(item.id, 'reject', reject);
+      const actionStatus = document.createElement('div');
+      actionStatus.className = 'feedback-action-status';
+      approve.onclick = () => decideFeedback(item.id, 'approve', approve, actionStatus, {
+        title: instructionTitle.value,
+        description: instructionDescription.value
+      });
+      reject.onclick = () => decideFeedback(item.id, 'reject', reject, actionStatus);
       actions.append(approve, reject);
-      card.appendChild(actions);
+      card.append(actions, actionStatus);
+    } else if (item.implementation_title && item.implementation_description) {
+      const approved = document.createElement('div');
+      approved.className = 'feedback-approved';
+      const approvedLabel = document.createElement('div');
+      approvedLabel.className = 'feedback-label';
+      approvedLabel.textContent = '承認した実装指示';
+      const approvedTitle = document.createElement('div');
+      approvedTitle.className = 'feedback-title';
+      approvedTitle.textContent = item.implementation_title;
+      const approvedBody = document.createElement('div');
+      approvedBody.className = 'feedback-body';
+      approvedBody.textContent = item.implementation_description;
+      approved.append(approvedLabel, approvedTitle, approvedBody);
+      card.appendChild(approved);
     }
     if (item.pull_request_url) {
       const link = document.createElement('a');
@@ -232,19 +307,34 @@ async function loadFeedback(companyId) {
   });
 }
 
-async function decideFeedback(id, action, button) {
-  button.disabled = true;
+async function decideFeedback(id, action, button, status, instruction = null) {
+  const implementationTitle = instruction?.title.trim() || '';
+  const implementationDescription = instruction?.description.trim() || '';
+  if (action === 'approve' && (!implementationTitle || !implementationDescription)) {
+    status.textContent = '実装用タイトルと実装内容の両方を入力してください。';
+    return;
+  }
+  const actionButtons = [...button.parentElement.querySelectorAll('button')];
+  actionButtons.forEach(actionButton => { actionButton.disabled = true; });
+  status.textContent = '';
   const original = button.textContent;
   button.textContent = action === 'approve' ? '実装を依頼中...' : '処理中...';
   const { data: { session } } = await sb.auth.getSession();
   const { data, error } = await sb.functions.invoke('feedback-approve', {
     headers: { Authorization: `Bearer ${session.access_token}` },
-    body: { id, action }
+    body: {
+      id,
+      action,
+      implementation_title: implementationTitle,
+      implementation_description: implementationDescription
+    }
   });
   if (error || !data?.ok) {
-    button.disabled = false;
+    actionButtons.forEach(actionButton => { actionButton.disabled = false; });
     button.textContent = original;
-    alert(data?.error || '処理できませんでした。もう一度お試しください。');
+    status.textContent = data?.error === 'Invalid implementation instructions'
+      ? '実装指示はタイトル120文字以内、内容4000文字以内で入力してください。'
+      : '処理できませんでした。もう一度お試しください。';
     return;
   }
   const { data: profile } = await sb.from('profiles').select('company_id').eq('id', session.user.id).single();

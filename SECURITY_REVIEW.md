@@ -14,13 +14,15 @@ No unresolved high-severity findings were identified in the new feedback flow.
 - Browser clients cannot insert, approve, reject, or update automation state directly.
 - Browser roles have only `SELECT` table privileges; write privileges are restricted to `service_role` and further checked by Edge Functions.
 - Approval re-verifies `is_admin` and company membership server-side.
+- Student-submitted title and description remain immutable source records; owner-edited implementation instructions are stored in separate columns.
+- Owner-edited instructions are length-validated server-side and can be written only through the admin-checked approval function.
 - A compare-and-update status transition prevents duplicate approvals.
 - Service role, GitHub, OpenAI, Resend, and callback credentials remain server-side.
 - The official Codex GitHub Action isolates the OpenAI credential behind its Responses API proxy.
 - Callback updates require a dedicated secret and accept only known statuses and GitHub PR URLs.
 - User text is rendered with `textContent`; notification HTML is escaped.
 - The notification Issue is created only in the private implementation repository and marks its body as untrusted input.
-- Feedback is explicitly treated as untrusted data in the Codex prompt.
+- Owner-approved instructions define the implementation task but cannot override the workflow's security constraints; embedded URLs, commands, and quoted text remain untrusted.
 - Codex runs with a workspace-write sandbox and no interactive elevation.
 - The Codex Action drops sudo before model-controlled work and checkout credentials are not persisted.
 - Automation creates a PR and cannot merge or deploy directly.

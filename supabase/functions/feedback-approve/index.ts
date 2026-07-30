@@ -22,9 +22,16 @@ Deno.serve(async (request) => {
     const id = String(body.id || "");
     const action = String(body.action || "");
     if (!id || !["approve", "reject"].includes(action)) return json({ error: "Invalid input" }, 400);
+    const implementationTitle = String(body.implementation_title || "").trim();
+    const implementationDescription = String(body.implementation_description || "").trim();
+    if (action === "approve" &&
+        (!implementationTitle || implementationTitle.length > 120 ||
+         !implementationDescription || implementationDescription.length > 4000)) {
+      return json({ error: "Invalid implementation instructions" }, 400);
+    }
 
     const { data: item, error: itemError } = await admin.from("feedback_requests")
-      .select("id, company_id, category, title, description, page_url, status")
+      .select("id, company_id, category, page_url, status")
       .eq("id", id).eq("company_id", approver.company_id).single();
     if (itemError || !item) return json({ error: "Not found" }, 404);
     if (!["pending", "failed"].includes(item.status)) return json({ error: "Already processed" }, 409);
@@ -41,11 +48,16 @@ Deno.serve(async (request) => {
     const githubRepo = Deno.env.get("GITHUB_REPOSITORY");
     if (!githubToken || !githubRepo) return json({ error: "GitHub automation is not configured" }, 503);
 
+    const now = new Date().toISOString();
     const { data: locked, error: lockError } = await admin.from("feedback_requests").update({
       status: "implementing",
+      implementation_title: implementationTitle,
+      implementation_description: implementationDescription,
+      edited_by: user.id,
+      edited_at: now,
       approved_by: user.id,
-      approved_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      approved_at: now,
+      updated_at: now,
     }).eq("id", id).in("status", ["pending", "failed"]).select("id").maybeSingle();
     if (lockError) throw lockError;
     if (!locked) return json({ error: "Already processed" }, 409);
@@ -63,8 +75,8 @@ Deno.serve(async (request) => {
         inputs: {
           feedback_id: item.id,
           category: item.category,
-          title: item.title,
-          description: item.description,
+          title: implementationTitle,
+          description: implementationDescription,
           page_url: item.page_url || "",
         },
       }),

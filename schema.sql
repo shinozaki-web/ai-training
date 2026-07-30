@@ -148,6 +148,12 @@ CREATE TABLE feedback_requests (
   status TEXT NOT NULL DEFAULT 'pending'
     CHECK (status IN ('pending', 'implementing', 'in_review', 'completed', 'rejected', 'failed')),
   admin_note TEXT CHECK (admin_note IS NULL OR char_length(admin_note) <= 1000),
+  implementation_title TEXT
+    CHECK (implementation_title IS NULL OR char_length(implementation_title) BETWEEN 1 AND 120),
+  implementation_description TEXT
+    CHECK (implementation_description IS NULL OR char_length(implementation_description) BETWEEN 1 AND 4000),
+  edited_by UUID REFERENCES profiles(id),
+  edited_at TIMESTAMPTZ,
   approved_by UUID REFERENCES profiles(id),
   approved_at TIMESTAMPTZ,
   pull_request_url TEXT,
