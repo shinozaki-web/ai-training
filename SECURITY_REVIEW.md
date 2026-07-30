@@ -27,6 +27,9 @@ No unresolved high-severity findings were identified in the new feedback flow.
 - The Codex Action drops sudo before model-controlled work and checkout credentials are not persisted.
 - Automation creates a PR and cannot merge or deploy directly.
 - Completion callbacks run only for merged `codex/feedback-<UUID>` branches or an explicit trusted dispatch.
+- Password reset requests use Supabase Auth recovery links and do not reveal whether an email address is registered.
+- The password update form requires a recovery session, checks confirmation, enforces at least eight characters, and signs out after success.
+- Production Auth redirects are restricted to the exact password reset URL.
 - Third-party GitHub Actions and Codex CLI are pinned to reviewed versions.
 - RLS admin checks use narrowly granted `SECURITY DEFINER` helpers with a fixed `search_path`.
 

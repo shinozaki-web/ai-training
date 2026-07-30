@@ -58,13 +58,19 @@ Settings → Actions → General で Workflow permissions を Read and write に
 自動作成されたPRがマージされると、`complete-feedback.yml` が管理画面の状態を
 「対応済み」へ更新します。
 
-## 3. 動作確認
+## 3. パスワード再設定メール
+
+Supabase Authentication の Custom SMTP を設定してください。標準メールサービスは
+プロジェクトメンバー以外へ配信されないため、受講生への本番配信には利用できません。
+Site URL は `https://ai-training-psi.vercel.app`、許可する Redirect URL は
+`https://ai-training-psi.vercel.app/reset-password.html` です。
+
+## 4. 動作確認
 
 1. 生徒アカウントで1件送信する
-2. 管理画面で受講者の原文を確認し、「実装用タイトル」と「実装内容・完了条件」を編集する
-3. 「編集内容を承認して実装へ」を押す
-4. 承認した実装指示でPRが作成されることを確認する
-2. メールと管理画面の両方に表示されることを確認する
-3. 管理者で承認する
-4. GitHub Actions が起動し、PRが作られることを確認する
-5. PRリンクが管理画面に表示されることを確認する
+2. 管理画面と担当者付きGitHub Issueに表示されることを確認する
+3. 管理画面で受講者の原文を確認し、「実装用タイトル」と「実装内容・完了条件」を編集する
+4. 「編集内容を承認して実装へ」を押す
+5. GitHub Actions が起動し、承認した実装指示でPRが作成されることを確認する
+6. PRリンクが管理画面に表示されることを確認する
+7. PRをマージし、管理画面が「対応済み」になることを確認する

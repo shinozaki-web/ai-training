@@ -13,6 +13,7 @@
   .login-logo h1 { font-size: 20px; font-weight: 800; }
   .login-logo p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
   .error-msg { color: var(--danger); font-size: 13px; margin-top: 8px; display: none; }
+  .forgot-link { display:block; text-align:right; color:var(--primary); font-size:12px; font-weight:700; margin-top:-6px; text-decoration:none; }
 </style>
 </head>
 <body>
@@ -30,11 +31,12 @@
       <label>パスワード</label>
       <input type="password" id="password" placeholder="パスワードを入力" autocomplete="current-password">
     </div>
+    <a class="forgot-link" href="forgot-password.html">パスワードを忘れた方</a>
     <p class="error-msg" id="error-msg"></p>
     <button class="btn btn-primary" id="login-btn" style="margin-top:8px;">ログイン</button>
   </div>
   <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:20px;">
-    IDとパスワードは担当者からお知らせします
+    ログインIDは登録されたメールアドレスです
   </p>
 </div>
 

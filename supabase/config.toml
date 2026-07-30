@@ -1,5 +1,18 @@
 project_id = "lnszvaeomaeukazkfilm"
 
+[auth]
+site_url = "https://ai-training-psi.vercel.app"
+additional_redirect_urls = ["https://ai-training-psi.vercel.app/reset-password.html"]
+
+[auth.email]
+enable_confirmations = true
+max_frequency = "1m"
+otp_length = 8
+
+[auth.mfa.totp]
+enroll_enabled = true
+verify_enabled = true
+
 # Each function performs its own auth.getUser() or shared-secret verification.
 # Disabling the gateway's legacy JWT check avoids rejecting valid asymmetric
 # Supabase Auth tokens before the function can verify them.
