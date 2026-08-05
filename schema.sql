@@ -106,7 +106,17 @@ GRANT EXECUTE ON FUNCTION can_admin_user(UUID) TO authenticated;
 -- 自分のデータのみ読み書き可
 -- profiles は操作ごとに分割（is_admin の権限昇格を防ぐ）
 CREATE POLICY "own profile read"   ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "own profile insert" ON profiles FOR INSERT WITH CHECK (auth.uid() = id AND is_admin = false);
+-- 招待トークンとcompany_idの両方をDB側で照合（bypass対策）
+CREATE POLICY "own profile insert" ON profiles FOR INSERT WITH CHECK (
+  auth.uid() = id
+  AND is_admin = false
+  AND EXISTS (
+    SELECT 1 FROM invitations
+    WHERE invitations.company_id = profiles.company_id
+    AND invitations.token = (auth.jwt() -> 'user_metadata' ->> 'invitation_token')
+    AND invitations.expires_at > NOW()
+  )
+);
 CREATE POLICY "own profile update" ON profiles FOR UPDATE
   USING (auth.uid() = id)
   WITH CHECK (

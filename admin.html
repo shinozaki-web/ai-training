@@ -41,6 +41,7 @@
   .feedback-actions .btn { padding:10px 12px; font-size:13px; }
   .type-pill { border-radius:999px; padding:4px 8px; background:#e2e8f0; color:#475569; font-size:10px; font-weight:700; flex-shrink:0; }
   .status-link { display:inline-block; color:var(--primary); font-size:12px; font-weight:700; margin-top:8px; }
+  .invite-url-box { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:12px; font-size:12px; word-break:break-all; color:var(--text); margin:10px 0; }
 </style>
 </head>
 <body>
@@ -55,6 +56,11 @@
     <div class="stat-card"><div class="num">-</div><div class="lbl">平均進捗</div></div>
     <div class="stat-card"><div class="num">-</div><div class="lbl">修了者</div></div>
     <div class="stat-card"><div class="num">-</div><div class="lbl">アンケート回答</div></div>
+  </div>
+
+  <div class="section-title">招待リンク</div>
+  <div class="card" id="invite-section" style="padding:16px;">
+    <div style="text-align:center; color:var(--text-muted); padding:8px; font-size:14px;">読み込み中...</div>
   </div>
 
   <div class="section-title">メンバー進捗</div>
@@ -89,7 +95,7 @@ const TOTAL_SECTIONS = MODULES.reduce((sum, m) => sum + m.sections.length, 0);
 
   document.getElementById('company-name').textContent = me.companies?.name ?? '';
 
-  await loadFeedback(me.company_id);
+  await Promise.all([loadInvite(me.company_id), loadFeedback(me.company_id)]);
 
   // 同社メンバー取得
   const { data: members } = await sb.from('profiles').select('id, name, is_admin').eq('company_id', me.company_id);
@@ -170,6 +176,103 @@ const TOTAL_SECTIONS = MODULES.reduce((sum, m) => sum + m.sections.length, 0);
     list.appendChild(row);
   });
 })();
+
+async function loadInvite(companyId) {
+  const section = document.getElementById('invite-section');
+  const { data: invites } = await sb.from('invitations')
+    .select('id, token, expires_at')
+    .eq('company_id', companyId)
+    .gt('expires_at', new Date().toISOString())
+    .order('created_at', { ascending: false })
+    .limit(1);
+
+  const invite = invites?.[0];
+  section.innerHTML = '';
+
+  if (invite) {
+    const base = location.href.replace('admin.html', '');
+    const url = `${base}register.html?token=${invite.token}`;
+    const expiry = new Date(invite.expires_at).toLocaleDateString('ja-JP');
+
+    const label = document.createElement('div');
+    label.style.cssText = 'font-size:13px; color:var(--text-muted); margin-bottom:4px;';
+    label.textContent = `有効期限: ${expiry}`;
+
+    const urlBox = document.createElement('div');
+    urlBox.className = 'invite-url-box';
+    urlBox.textContent = url;
+
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn-primary';
+    copyBtn.textContent = 'URLをコピー';
+    copyBtn.onclick = () => {
+      navigator.clipboard.writeText(url);
+      copyBtn.textContent = 'コピーしました！';
+      setTimeout(() => { copyBtn.textContent = 'URLをコピー'; }, 2000);
+    };
+
+    const revokeBtn = document.createElement('button');
+    revokeBtn.className = 'btn btn-outline';
+    revokeBtn.textContent = '無効にする';
+    revokeBtn.onclick = async () => {
+      if (revokeBtn.dataset.confirm !== 'yes') {
+        revokeBtn.textContent = 'もう一度押すと無効化';
+        revokeBtn.dataset.confirm = 'yes';
+        setTimeout(() => { revokeBtn.textContent = '無効にする'; delete revokeBtn.dataset.confirm; }, 3000);
+        return;
+      }
+      revokeBtn.disabled = true;
+      await sb.from('invitations').delete().eq('id', invite.id);
+      await loadInvite(companyId);
+    };
+
+    const actions = document.createElement('div');
+    actions.style.cssText = 'display:flex; gap:8px; margin-top:4px;';
+    actions.append(copyBtn, revokeBtn);
+    section.append(label, urlBox, actions);
+
+  } else {
+    const noInvite = document.createElement('div');
+    noInvite.style.cssText = 'color:var(--text-muted); font-size:13px; margin-bottom:12px;';
+    noInvite.textContent = '有効な招待リンクはありません';
+
+    const expiryLabel = document.createElement('label');
+    expiryLabel.style.cssText = 'display:block; font-size:12px; font-weight:700; margin-bottom:6px; color:var(--text-muted);';
+    expiryLabel.textContent = '有効期限';
+
+    const expiryInput = document.createElement('input');
+    expiryInput.type = 'date';
+    expiryInput.style.cssText = 'width:100%; box-sizing:border-box; margin-bottom:12px;';
+    const defaultExpiry = new Date();
+    defaultExpiry.setDate(defaultExpiry.getDate() + 30);
+    expiryInput.value = defaultExpiry.toISOString().split('T')[0];
+    expiryInput.min = new Date().toISOString().split('T')[0];
+
+    const errMsg = document.createElement('div');
+    errMsg.style.cssText = 'color:var(--danger); font-size:12px; margin-top:8px; display:none;';
+
+    const generateBtn = document.createElement('button');
+    generateBtn.className = 'btn btn-primary';
+    generateBtn.textContent = '招待リンクを発行する';
+    generateBtn.onclick = async () => {
+      generateBtn.disabled = true;
+      generateBtn.textContent = '発行中...';
+      errMsg.style.display = 'none';
+      const expiresAt = new Date(expiryInput.value + 'T23:59:59+09:00');
+      const { error } = await sb.from('invitations').insert({ company_id: companyId, expires_at: expiresAt.toISOString() });
+      if (error) {
+        generateBtn.disabled = false;
+        generateBtn.textContent = '招待リンクを発行する';
+        errMsg.textContent = '発行に失敗しました。もう一度お試しください。';
+        errMsg.style.display = 'block';
+        return;
+      }
+      await loadInvite(companyId);
+    };
+
+    section.append(noInvite, expiryLabel, expiryInput, generateBtn, errMsg);
+  }
+}
 
 const feedbackTypes = { bug: '不具合', improvement: '改善', content: '講座拡充' };
 const feedbackStatuses = {

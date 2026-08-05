@@ -18,6 +18,9 @@
 </head>
 <body>
 <div class="login-wrap">
+  <div id="registered-msg" style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:14px; margin-bottom:20px; font-size:13px; color:#15803d; text-align:center;">
+    登録が完了しました。メールアドレスとパスワードでログインしてください。
+  </div>
   <div class="login-logo">
     <div class="logo-mark">🤖</div>
     <h1>AI業務改善研修</h1>
@@ -46,6 +49,9 @@
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) { location.href = 'home.html'; return; }
+  if (new URLSearchParams(location.search).get('registered') === '1') {
+    document.getElementById('registered-msg').style.display = 'block';
+  }
 })();
 
 document.getElementById('login-btn').onclick = async () => {

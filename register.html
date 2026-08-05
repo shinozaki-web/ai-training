@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>受講者登録 — AI業務改善研修</title>
+<link rel="stylesheet" href="style.css">
+<style>
+  body { padding-bottom: 0; display: flex; flex-direction: column; justify-content: center; min-height: 100vh; }
+  .register-wrap { padding: 32px 24px; max-width: 420px; margin: 0 auto; width: 100%; }
+  .login-logo { text-align: center; margin-bottom: 36px; }
+  .login-logo .logo-mark { font-size: 48px; margin-bottom: 12px; }
+  .login-logo h1 { font-size: 20px; font-weight: 800; }
+  .login-logo p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
+  .error-msg { color: var(--danger); font-size: 13px; margin-top: 8px; display: none; }
+</style>
+</head>
+<body>
+<div class="register-wrap">
+  <div class="login-logo">
+    <div class="logo-mark">🤖</div>
+    <h1>AI業務改善研修</h1>
+    <p id="company-label">招待URLを確認中...</p>
+  </div>
+
+  <div id="invalid-msg" style="display:none;">
+    <div class="card" style="text-align:center; padding:24px;">
+      <p style="font-size:14px; color:var(--danger); margin-bottom:8px;">この招待URLは無効または期限切れです。</p>
+      <p style="font-size:12px; color:var(--text-muted);">担当者にお問い合わせください。</p>
+    </div>
+  </div>
+
+  <div id="register-form" style="display:none;">
+    <div class="card">
+      <div class="form-group">
+        <label>お名前</label>
+        <input type="text" id="name" placeholder="山田 太郎" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label>メールアドレス</label>
+        <input type="email" id="email" placeholder="example@company.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>パスワード（8文字以上）</label>
+        <input type="password" id="password" placeholder="8文字以上で設定してください" autocomplete="new-password">
+      </div>
+      <p class="error-msg" id="error-msg"></p>
+      <button class="btn btn-primary" id="register-btn" style="margin-top:8px;">登録する</button>
+    </div>
+    <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:16px;">
+      登録後、このメールアドレスとパスワードでログインできます
+    </p>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
+<script src="supabase-config.js"></script>
+<script>
+let inviteCompanyId = null;
+let inviteToken = null;
+
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) { location.href = 'home.html'; return; }
+
+  const token = new URLSearchParams(location.search).get('token');
+  if (!token) { showInvalid(); return; }
+
+  const { data: invite } = await sb.from('invitations')
+    .select('company_id, expires_at, companies(name)')
+    .eq('token', token)
+    .maybeSingle();
+
+  if (!invite || new Date(invite.expires_at) < new Date()) {
+    showInvalid(); return;
+  }
+
+  inviteCompanyId = invite.company_id;
+  inviteToken = token;
+  document.getElementById('company-label').textContent =
+    (invite.companies?.name ?? '') + ' の研修に招待されています';
+  document.getElementById('register-form').style.display = '';
+})();
+
+function showInvalid() {
+  document.getElementById('company-label').style.display = 'none';
+  document.getElementById('invalid-msg').style.display = '';
+}
+
+document.getElementById('register-btn').onclick = async () => {
+  const name     = document.getElementById('name').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const errEl    = document.getElementById('error-msg');
+  const btn      = document.getElementById('register-btn');
+
+  errEl.style.display = 'none';
+  if (!name)              { showErr('お名前を入力してください'); return; }
+  if (!email)             { showErr('メールアドレスを入力してください'); return; }
+  if (password.length < 8){ showErr('パスワードは8文字以上で入力してください'); return; }
+
+  btn.textContent = '登録中...';
+  btn.disabled = true;
+
+  const { data, error: signUpError } = await sb.auth.signUp({
+    email, password,
+    options: { data: { invitation_token: inviteToken } }
+  });
+  if (signUpError) {
+    showErr('登録できませんでした。もう一度お試しください。');
+    btn.textContent = '登録する'; btn.disabled = false; return;
+  }
+
+  const userId = data.user?.id;
+  if (!userId) {
+    showErr('登録処理に失敗しました。担当者にお問い合わせください。');
+    btn.textContent = '登録する'; btn.disabled = false; return;
+  }
+
+  const { error: profileError } = await sb.from('profiles').insert({
+    id: userId,
+    name,
+    company_id: inviteCompanyId,
+    is_admin: false
+  });
+
+  if (profileError) {
+    if (profileError.code === '23505') {
+      showErr('このメールアドレスはすでに登録されています。ログイン画面からログインしてください。');
+    } else {
+      showErr('プロフィールの登録に失敗しました。もう一度お試しください。');
+    }
+    btn.textContent = '登録する'; btn.disabled = false; return;
+  }
+
+  location.href = 'index.html?registered=1';
+
+  function showErr(msg) {
+    errEl.textContent = msg;
+    errEl.style.display = 'block';
+  }
+};
+</script>
+</body>
+</html>
