@@ -66,17 +66,15 @@
   <a href="home.html"><span class="icon">🏠</span>ホーム</a>
   <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
   <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
-  <a href="feedback.html"><span class="icon">💬</span>改善</a>
+  <a href="mailto:shinozaki@meolabo.com?subject=AI業務改善研修について"><span class="icon">✉️</span>問合せ</a>
 </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
-<script src="supabase-config.js"></script>
+<script src="local-store.js"></script>
 <script src="data/lessons.js"></script>
 <script>
 let currentModule = null;
 let currentSectionIdx = 0;
 let doneSections = new Set();
-let uid = null;
 
 function showToast(msg) {
   const t = document.getElementById('toast');
@@ -193,15 +191,8 @@ function renderSection() {
   renderSectionNav();
 }
 
-async function completeSection(sectionId) {
-  const { error } = await sb.from('section_progress').upsert({
-    user_id: uid,
-    module_id: currentModule.id,
-    section_id: sectionId
-  }, { onConflict: 'user_id,module_id,section_id' });
-
-  if (error) { showToast('エラーが発生しました'); return; }
-
+function completeSection(sectionId) {
+  trainingStore.completeSection(currentModule.id, sectionId);
   doneSections.add(sectionId);
   showToast('セクション完了！');
 
@@ -213,11 +204,7 @@ async function completeSection(sectionId) {
   }
 }
 
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = 'index.html'; return; }
-  uid = session.user.id;
-
+(function () {
   const params = new URLSearchParams(location.search);
   const moduleId = parseInt(params.get('module'));
   currentModule = MODULES.find(m => m.id === moduleId);
@@ -225,12 +212,7 @@ async function completeSection(sectionId) {
 
   document.getElementById('module-title').textContent = currentModule.title;
 
-  // 進捗取得
-  const { data: progress } = await sb.from('section_progress')
-    .select('section_id')
-    .eq('user_id', uid)
-    .eq('module_id', moduleId);
-  (progress || []).forEach(p => doneSections.add(p.section_id));
+  doneSections = trainingStore.getCompletedSections(moduleId);
 
   // 未完了の最初のセクションから開始
   const firstIncomplete = currentModule.sections.findIndex(s => !doneSections.has(s.id));

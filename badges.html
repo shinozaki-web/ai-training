@@ -93,11 +93,10 @@
   <a href="home.html"><span class="icon">🏠</span>ホーム</a>
   <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
   <a href="badges.html" class="active"><span class="icon">🏅</span>バッジ</a>
-  <a href="feedback.html"><span class="icon">💬</span>改善</a>
+  <a href="mailto:shinozaki@meolabo.com?subject=AI業務改善研修について"><span class="icon">✉️</span>問合せ</a>
 </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
-<script src="supabase-config.js"></script>
+<script src="local-store.js"></script>
 <script src="data/lessons.js"></script>
 <script>
 function formatDate(iso) {
@@ -106,16 +105,9 @@ function formatDate(iso) {
   return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
 }
 
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = 'index.html'; return; }
-  const uid = session.user.id;
-
-  const { data: profile } = await sb.from('profiles').select('name, companies(name)').eq('id', uid).maybeSingle();
-  const { data: badges } = await sb.from('user_badges').select('badge_id, earned_at').eq('user_id', uid);
-
-  const earnedMap = {};
-  (badges || []).forEach(b => { earnedMap[b.badge_id] = b.earned_at; });
+(function () {
+  const profile = trainingStore.getProfile();
+  const earnedMap = trainingStore.getBadges();
 
   const moduleBadgeCount = MODULES.filter(m => earnedMap[m.badge.id]).length;
   const hasComplete = !!earnedMap['complete'];
@@ -144,7 +136,7 @@ function formatDate(iso) {
     const nameEl = document.createElement('div');
     nameEl.textContent = '氏　名：' + (profile?.name ?? '');
     const compEl = document.createElement('div');
-    compEl.textContent = '会　社：' + (profile?.companies?.name ?? '');
+    compEl.textContent = '会　社：' + (profile?.company ?? '');
     const dateEl = document.createElement('div');
     dateEl.textContent = '修了日：' + formatDate(earnedMap['complete']);
     const issuer = document.createElement('div');
