@@ -13,71 +13,45 @@
   .login-logo h1 { font-size: 20px; font-weight: 800; }
   .login-logo p { font-size: 13px; color: var(--text-muted); margin-top: 4px; }
   .error-msg { color: var(--danger); font-size: 13px; margin-top: 8px; display: none; }
-  .forgot-link { display:block; text-align:right; color:var(--primary); font-size:12px; font-weight:700; margin-top:-6px; text-decoration:none; }
+  .start-note { color:var(--text-muted); font-size:13px; line-height:1.7; margin-bottom:18px; }
 </style>
 </head>
 <body>
 <div class="login-wrap">
-  <div id="registered-msg" style="display:none; background:#f0fdf4; border:1px solid #86efac; border-radius:12px; padding:14px; margin-bottom:20px; font-size:13px; color:#15803d; text-align:center;">
-    登録が完了しました。メールアドレスとパスワードでログインしてください。
-  </div>
   <div class="login-logo">
     <div class="logo-mark">🤖</div>
     <h1>AI業務改善研修</h1>
   </div>
   <div class="card">
+    <p class="start-note">ログインは不要です。学習進捗はこのブラウザ内に保存されます。</p>
     <div class="form-group">
-      <label>メールアドレス</label>
-      <input type="email" id="email" placeholder="example@company.com" autocomplete="email">
+      <label>お名前（任意）</label>
+      <input type="text" id="name" placeholder="受講者" maxlength="60" autocomplete="name">
     </div>
     <div class="form-group">
-      <label>パスワード</label>
-      <input type="password" id="password" placeholder="パスワードを入力" autocomplete="current-password">
+      <label>会社名（任意）</label>
+      <input type="text" id="company" placeholder="会社名" maxlength="100" autocomplete="organization">
     </div>
-    <a class="forgot-link" href="forgot-password.html">パスワードを忘れた方</a>
-    <p class="error-msg" id="error-msg"></p>
-    <button class="btn btn-primary" id="login-btn" style="margin-top:8px;">ログイン</button>
+    <button class="btn btn-primary" id="start-btn" style="margin-top:8px;">研修を始める</button>
   </div>
   <p style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:20px;">
-    ログインIDは登録されたメールアドレスです
+    別の端末やブラウザには進捗が引き継がれません
   </p>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
-<script src="supabase-config.js"></script>
+<script src="local-store.js"></script>
 <script>
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) { location.href = 'home.html'; return; }
-  if (new URLSearchParams(location.search).get('registered') === '1') {
-    document.getElementById('registered-msg').style.display = 'block';
-  }
-})();
+const profile = trainingStore.getProfile();
+if (profile.name !== '受講者') document.getElementById('name').value = profile.name;
+document.getElementById('company').value = profile.company || '';
 
-document.getElementById('login-btn').onclick = async () => {
-  const email    = document.getElementById('email').value.trim();
-  const password = document.getElementById('password').value;
-  const errEl    = document.getElementById('error-msg');
-  const btn      = document.getElementById('login-btn');
-
-  errEl.style.display = 'none';
-  btn.textContent = 'ログイン中...';
-  btn.disabled = true;
-
-  const { error } = await sb.auth.signInWithPassword({ email, password });
-  if (error) {
-    errEl.textContent = 'メールアドレスまたはパスワードが正しくありません';
-    errEl.style.display = 'block';
-    btn.textContent = 'ログイン';
-    btn.disabled = false;
-    return;
-  }
+document.getElementById('start-btn').onclick = () => {
+  trainingStore.setProfile({
+    name: document.getElementById('name').value.trim() || '受講者',
+    company: document.getElementById('company').value.trim()
+  });
   location.href = 'home.html';
 };
-
-document.getElementById('password').addEventListener('keydown', e => {
-  if (e.key === 'Enter') document.getElementById('login-btn').click();
-});
 </script>
 </body>
 </html>

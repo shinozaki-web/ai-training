@@ -59,15 +59,14 @@
   <a href="home.html"><span class="icon">🏠</span>ホーム</a>
   <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
   <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
-  <a href="feedback.html"><span class="icon">💬</span>改善</a>
+  <a href="mailto:shinozaki@meolabo.com?subject=AI業務改善研修について"><span class="icon">✉️</span>問合せ</a>
 </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
-<script src="supabase-config.js"></script>
+<script src="local-store.js"></script>
 <script src="data/lessons.js"></script>
 <script src="data/quizzes.js"></script>
 <script>
-let moduleId, currentModule, questions, uid;
+let moduleId, currentModule, questions;
 let currentQ = 0;
 let score = 0;
 let answered = false;
@@ -162,27 +161,20 @@ function renderQuestion() {
   main.appendChild(card);
 }
 
-async function saveAndShowResult() {
+function saveAndShowResult() {
   const total = questions.length;
 
-  // スコア保存
-  await sb.from('quiz_results').insert({
-    user_id: uid,
-    module_id: moduleId,
-    score,
-    total
-  });
+  trainingStore.saveQuizResult(moduleId, score, total);
 
   // バッジ付与（スコアに関係なく初回完了で付与）
   const badgeId = currentModule.badge.id;
-  await sb.from('user_badges').upsert({ user_id: uid, badge_id: badgeId }, { onConflict: 'user_id,badge_id' });
+  trainingStore.awardBadge(badgeId);
 
   // 全バッジ確認 → 修了証バッジ付与
-  const { data: badges } = await sb.from('user_badges').select('badge_id').eq('user_id', uid);
-  const earnedIds = new Set((badges || []).map(b => b.badge_id));
+  const earnedIds = new Set(Object.keys(trainingStore.getBadges()));
   const allModuleBadges = MODULES.every(m => earnedIds.has(m.badge.id));
   if (allModuleBadges) {
-    await sb.from('user_badges').upsert({ user_id: uid, badge_id: 'complete' }, { onConflict: 'user_id,badge_id' });
+    trainingStore.awardBadge('complete');
   }
 
   renderResult(score, total, badgeId);
@@ -247,11 +239,7 @@ function renderResult(score, total, badgeId) {
   main.appendChild(backBtn);
 }
 
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = 'index.html'; return; }
-  uid = session.user.id;
-
+(function () {
   const params = new URLSearchParams(location.search);
   moduleId = parseInt(params.get('module'));
   currentModule = MODULES.find(m => m.id === moduleId);

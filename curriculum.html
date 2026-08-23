@@ -22,24 +22,14 @@
   <a href="home.html"><span class="icon">🏠</span>ホーム</a>
   <a href="curriculum.html" class="active"><span class="icon">📚</span>カリキュラム</a>
   <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
-  <a href="feedback.html"><span class="icon">💬</span>改善</a>
+  <a href="mailto:shinozaki@meolabo.com?subject=AI業務改善研修について"><span class="icon">✉️</span>問合せ</a>
 </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
-<script src="supabase-config.js"></script>
+<script src="local-store.js"></script>
 <script src="data/lessons.js"></script>
 <script>
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = 'index.html'; return; }
-
-  const uid = session.user.id;
-  const { data: progress } = await sb.from('section_progress').select('module_id, section_id').eq('user_id', uid);
-  const progressMap = {};
-  (progress || []).forEach(p => {
-    if (!progressMap[p.module_id]) progressMap[p.module_id] = new Set();
-    progressMap[p.module_id].add(p.section_id);
-  });
+(function () {
+  const progressMap = trainingStore.getProgressMap();
 
   const list = document.getElementById('module-list');
   list.innerHTML = '';

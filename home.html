@@ -77,7 +77,7 @@
   </div>
 
   <div style="margin-top:24px;">
-    <button class="btn btn-outline" id="logout-btn">ログアウト</button>
+    <p style="font-size:12px; color:var(--text-muted); text-align:center;">進捗はこのブラウザ内に保存されています</p>
   </div>
 </div>
 
@@ -85,47 +85,30 @@
   <a href="home.html" class="active"><span class="icon">🏠</span>ホーム</a>
   <a href="curriculum.html"><span class="icon">📚</span>カリキュラム</a>
   <a href="badges.html"><span class="icon">🏅</span>バッジ</a>
-  <a href="feedback.html"><span class="icon">💬</span>改善</a>
+  <a href="mailto:shinozaki@meolabo.com?subject=AI業務改善研修について"><span class="icon">✉️</span>問合せ</a>
 </nav>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.8/dist/umd/supabase.min.js" integrity="sha384-Tve8O+C6PBzsIMK/IRCwHbi8fyEzXIlIs6OfVBZHubplwYhaQF/4Mzxqgg+pp/oy" crossorigin="anonymous"></script>
-<script src="supabase-config.js"></script>
+<script src="local-store.js"></script>
 <script src="data/lessons.js"></script>
 <script>
 const BADGE_DEFS = MODULES.map(m => m.badge);
 // 修了証バッジ
 BADGE_DEFS.push({ id: 'complete', icon: '🏆', label: '修了証' });
 
-(async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) { location.href = 'index.html'; return; }
-
-  const uid = session.user.id;
-
-  // プロフィール取得
-  const { data: profile } = await sb.from('profiles').select('name, company_id, companies(name)').eq('id', uid).maybeSingle();
+(function () {
+  const profile = trainingStore.getProfile();
   if (profile) {
     const nameEl = document.getElementById('user-name');
     nameEl.textContent = profile.name + ' さん';
     const compEl = document.getElementById('company-name');
-    compEl.textContent = profile.companies?.name ?? '';
+    compEl.textContent = profile.company || '端末内に進捗を保存';
   }
 
-  // アンケート確認
-  const { data: survey } = await sb.from('survey_responses').select('id').eq('user_id', uid).maybeSingle();
-  if (!survey) { location.href = 'survey.html'; return; }
+  if (!trainingStore.hasSurvey()) { location.href = 'survey.html'; return; }
 
-  // 進捗取得
-  const { data: progress } = await sb.from('section_progress').select('module_id, section_id').eq('user_id', uid);
-  const progressMap = {};
-  (progress || []).forEach(p => {
-    if (!progressMap[p.module_id]) progressMap[p.module_id] = new Set();
-    progressMap[p.module_id].add(p.section_id);
-  });
+  const progressMap = trainingStore.getProgressMap();
 
-  // バッジ取得
-  const { data: badges } = await sb.from('user_badges').select('badge_id').eq('user_id', uid);
-  const earnedBadges = new Set((badges || []).map(b => b.badge_id));
+  const earnedBadges = new Set(Object.keys(trainingStore.getBadges()));
 
   // 完了モジュール数
   let completedCount = 0;
@@ -189,11 +172,6 @@ BADGE_DEFS.push({ id: 'complete', icon: '🏆', label: '修了証' });
     grid.appendChild(item);
   });
 })();
-
-document.getElementById('logout-btn').onclick = async () => {
-  await sb.auth.signOut();
-  location.href = 'index.html';
-};
 </script>
 </body>
 </html>
