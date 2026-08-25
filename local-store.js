@@ -6,7 +6,6 @@
   function emptyState() {
     return {
       profile: { name: '受講者', company: '' },
-      survey: null,
       progress: {},
       badges: {},
       quizResults: []
@@ -38,14 +37,6 @@
         name: String(profile?.name || '受講者').slice(0, 60),
         company: String(profile?.company || '').slice(0, 100)
       };
-      save(state);
-    },
-    hasSurvey() {
-      return !!load().survey;
-    },
-    saveSurvey(answers) {
-      const state = load();
-      state.survey = { ...answers, savedAt: new Date().toISOString() };
       save(state);
     },
     getProgressMap() {

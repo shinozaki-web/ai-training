@@ -104,8 +104,6 @@ BADGE_DEFS.push({ id: 'complete', icon: '🏆', label: '修了証' });
     compEl.textContent = profile.company || '端末内に進捗を保存';
   }
 
-  if (!trainingStore.hasSurvey()) { location.href = 'survey.html'; return; }
-
   const progressMap = trainingStore.getProgressMap();
 
   const earnedBadges = new Set(Object.keys(trainingStore.getBadges()));
